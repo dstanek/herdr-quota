@@ -50,9 +50,9 @@ function paceMark(window) {
   return Math.max(0, Math.min(100, (Date.now() - window.startsAt) / length * 100));
 }
 
-function currentWindow(windows) {
-  return windows.find((window) => /^(5h|5-hour|session)$/i.test(window.label))
-    || windows[0];
+// The window closest to running out, which is the one that will block first.
+function tightestWindow(windows) {
+  return windows.reduce((tightest, window) => (!tightest || window.usedPercent > tightest.usedPercent ? window : tightest), null);
 }
 
 // The layout block showing this mod, when a column gives it a fixed height.
@@ -125,7 +125,7 @@ export default class Quota extends View {
     const absent = !windows.length && Boolean(this.absent[provider.id]);
     // An idle Claude Code is not a failure, so its note stays dim.
     const quiet = absent || Boolean(this.paused[provider.id]);
-    const current = currentWindow(windows);
+    const current = tightestWindow(windows);
     const currentUsed = current ? Math.round(current.usedPercent) : null;
     const open = Boolean(this.expanded[provider.id]);
     const plan = typeof data?.plan === "string" ? data.plan.charAt(0).toUpperCase() + data.plan.slice(1) : "";

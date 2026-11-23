@@ -1,6 +1,6 @@
 # Quota
 
-A sidebar panel that shows how much of your Claude Code, ChatGPT (Codex) and GitHub Copilot subscription quota is used. Each provider is one line: its name, your plan, the current window and the percentage used. Click a provider to see all of its windows with a bar and a reset countdown.
+A sidebar panel that shows how much of your Claude Code, ChatGPT (Codex) and GitHub Copilot subscription quota is used. Each provider is one line: its name, your plan, the window closest to running out and the percentage used. Click a provider to see all of its windows with a bar and a reset countdown.
 
 ![Quota](preview.png)
 
@@ -9,7 +9,7 @@ A sidebar panel that shows how much of your Claude Code, ChatGPT (Codex) and Git
 A panel the width of the sidebar (built at 268px), sitting directly beneath Agents. It has the sidebar's chrome background and a 1px top border in the border color. Everything is drawn in theme colors, so it follows light and dark themes.
 
 - **Header, 41px tall.** "Quota" at the left, 11.5px, medium weight, dim. At the right, the time of the newest reading (10px, dim, hours and minutes only), then a 26px refresh button showing "↻" with 6px corners. The button gets the hover background and foreground color under the pointer and the tooltip "Refresh quota".
-- **One row per provider, 12px apart**, inset 16px from the left and 12px from the right: Claude, ChatGPT, GitHub Copilot. Left to right: the name (13px, semibold), the plan the provider reports with its first letter capitalized (9px, dim, for example "Max", "Plus", "Individual"), then at the right edge the current window's label (10px, dim, for example "5h" or "1mo"), "6% used" (11px, semibold) and an 11px chevron pointing right.
+- **One row per provider, 12px apart**, inset 16px from the left and 12px from the right: Claude, ChatGPT, GitHub Copilot. Left to right: the name (13px, semibold), the plan the provider reports with its first letter capitalized (9px, dim, for example "Max", "Plus", "Individual"), then at the right edge the tightest window's label (10px, dim, for example "5h" or "1mo"), "6% used" (11px, semibold) and an 11px chevron pointing right.
 - **An expanded provider** swaps its chevron to point down, drops the label and percentage from its row, and lists every window beneath, 5px apart. Each window is: its label (11px, muted) with "38% used" (11px, semibold) at the right; a 4px bar with 2px corners on a border-colored track, filled to the share that is used, with a 2px-wide, 8px-tall foreground-colored tick at the share of the window that has passed, where the fill would be at an even pace (shown when the window's start is known, moving right as the window runs); and "Resets in 2h 24m" (10px, dim).
 - **Color means attention.** A reading is foreground-colored with a muted bar until 60% is used, the "working" color from 60% used or once usage is 10 or more points ahead of an even pace through the window (50% used a fifth of the way through), and the "blocked" color from 85% used.
 - **A provider you have never signed in to** has a muted name and "Not signed in" (10px, dim) where the percentage would be. Expanded, it shows one dim 11px line saying which sign-in was not found.
@@ -21,7 +21,7 @@ A panel the width of the sidebar (built at 268px), sitting directly beneath Agen
 - It reads quota when it first appears, every five minutes after that, and when you click refresh. While reading, the header shows "Updating…" in place of the time. With no reading at all it shows "Not updated".
 - Countdowns and ages are redrawn every minute between readings.
 - Clicking anywhere on a provider's row expands or collapses it. Any number can be open. Providers start collapsed, and the open ones are not remembered across a reload.
-- The collapsed row shows the provider's 5-hour window if it has one, otherwise its first window.
+- The collapsed row shows the provider's tightest window, the one with the most used. On a tie it is the first the provider lists.
 - The panel resizes its own layout block to fit its rows, growing when a provider opens and shrinking when it closes. This only happens when the block sits in a column and has a fixed pixel height.
 - A reading younger than a minute is reused, so a second refresh inside a minute shows the same numbers.
 - When Claude or Copilot answers "rate limited", that provider is left alone for as long as it asks (ten minutes if it does not say) and its last reading stays on screen, marked stale.
