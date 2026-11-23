@@ -6,6 +6,7 @@ import { readClaudeCredentials } from "./claude-credentials.mjs";
 
 const home = homedir();
 const errors = {};
+const absent = {};
 const providers = {};
 const cachePath = process.env.HERDR_USAGE_CACHE
   || join(process.env.XDG_CACHE_HOME || join(home, ".cache"), "herdr-usage.json");
@@ -341,6 +342,8 @@ async function collectProvider(id, load) {
       ? "Codex CLI not found; sign in with ChatGPT in Codex"
       : String(error.message || error);
     errors[id] = message;
+    // Never set up, as opposed to broken: the panel shows these quietly.
+    if (/CLI not found|sign-in (not )?found/.test(message)) absent[id] = true;
     if (error.retryAfter) cache.retryAfter[id] = error.retryAfter;
     if (oldWindows.length && Number.isFinite(previous?.fetchedAt)) {
       providers[id] = { ...previous, windows: oldWindows, stale: true, note: message };
@@ -358,4 +361,4 @@ try {
 } catch {
   // Current readings remain usable if the cache directory is unavailable.
 }
-process.stdout.write(JSON.stringify({ providers, errors }));
+process.stdout.write(JSON.stringify({ providers, errors, absent }));

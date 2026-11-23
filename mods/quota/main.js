@@ -42,6 +42,7 @@ export default class Quota extends View {
   init(_props, cx) {
     this.windows = {};
     this.errors = {};
+    this.absent = {};
     this.expanded = {};
     this.busy = false;
     this.updatedAt = null;
@@ -66,6 +67,7 @@ export default class Quota extends View {
         const snapshot = JSON.parse(result.stdout);
         this.windows = snapshot.providers || {};
         this.errors = snapshot.errors || {};
+        this.absent = snapshot.absent || {};
         this.updatedAt = Date.now();
       } catch (error) {
         this.errors = { panel: String(error?.message || error) };
@@ -80,6 +82,7 @@ export default class Quota extends View {
     const data = this.windows[provider.id];
     const error = this.errors[provider.id] || data?.note;
     const windows = Array.isArray(data?.windows) ? data.windows : [];
+    const absent = !windows.length && Boolean(this.absent[provider.id]);
     const current = currentWindow(windows);
     const currentRemaining = current ? Math.round(100 - current.usedPercent) : null;
     const open = Boolean(this.expanded[provider.id]);
@@ -90,15 +93,16 @@ export default class Quota extends View {
           cx.notify();
         })
         .child(div().size(7).flex_none().rounded_full().bg(windows.length ? data.stale ? t.working : t.done : t.dim))
-        .child(div().flex_none().text_color(t.foreground).font_semibold().child(provider.name))
+        .child(div().flex_none().text_color(absent ? t.muted : t.foreground).font_semibold().child(provider.name))
         .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.working)
           .child(data?.stale ? staleLabel(data.fetchedAt) : ""))
         .when(current, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
         .when(current, (el) => el.child(div().flex_none().text_size(11).font_semibold()
           .text_color(colorFor(t, current.usedPercent)).child(`${currentRemaining}% left`)))
+        .when(absent, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("Not signed in")))
         .child(div().text_size(10).text_color(t.dim).child(open ? "⌄" : "›")))
-      .when(!windows.length, (el) => el.when(open || Boolean(error), (inner) => inner
-        .child(div().pl(14).text_size(11).text_color(error ? t.working : t.dim)
+      .when(!windows.length, (el) => el.when(open || (Boolean(error) && !absent), (inner) => inner
+        .child(div().pl(14).text_size(11).text_color(error && !absent ? t.working : t.dim)
           .child(error || `${provider.hint} not detected`))))
       .when(open, (el) => el.children(windows.map((window) => {
         const used = Math.max(0, Math.min(100, Number(window.usedPercent) || 0));

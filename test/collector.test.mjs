@@ -140,6 +140,7 @@ test("missing CLIs are reported against their own provider", async () => {
     assert.equal(snapshot.errors.chatgpt, "Codex CLI not found; sign in with ChatGPT in Codex");
     assert.equal(snapshot.errors.copilot, "GitHub CLI sign-in not found; run gh auth login");
     assert.equal(snapshot.errors.claude, "No Claude Code sign-in found");
+    assert.deepEqual(snapshot.absent, { claude: true, chatgpt: true, copilot: true });
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -166,6 +167,7 @@ test("Codex exiting mid-conversation fails only the ChatGPT provider", async () 
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
     assert.ok(snapshot.errors.chatgpt);
+    assert.equal(snapshot.absent.chatgpt, undefined);
     assert.equal(snapshot.errors.copilot, "GitHub CLI sign-in not found; run gh auth login");
   } finally {
     await rm(directory, { recursive: true, force: true });
