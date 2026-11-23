@@ -1,4 +1,5 @@
 import { access, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -37,6 +38,24 @@ async function refuseForeignMod() {
   }
 }
 
+// Herdr must not be left showing the layout that is about to be deleted.
+function leaveGeneratedLayout() {
+  const herdr = process.env.HERDR_APP_BIN_PATH || "herdr-app";
+  let shown;
+  try {
+    shown = JSON.parse(spawnSync(herdr, ["status"], { encoding: "utf8", timeout: 5000 }).stdout).layout;
+  } catch {
+    // Not installed or not running: nothing is showing the layout.
+    return false;
+  }
+  if (shown !== "quota-main") return false;
+  const switched = spawnSync(herdr, ["do", "layout.switch", JSON.stringify({ name: "main" })], { timeout: 5000 });
+  if (switched.status !== 0) {
+    fail("Herdr is showing quota-main and could not be switched to main. Switch layouts, then run --uninstall again.");
+  }
+  return true;
+}
+
 const mode = process.argv[2];
 if (mode === "--upgrade") {
   if (!await exists(modHome)) fail(`Nothing to upgrade at ${modHome}. Run without --upgrade to install.`);
@@ -46,10 +65,11 @@ if (mode === "--upgrade") {
   process.exit(0);
 } else if (mode === "--uninstall") {
   await refuseForeignMod();
+  const switched = leaveGeneratedLayout();
   await rm(modHome, { recursive: true, force: true });
   await rm(newLayoutPath, { force: true });
   console.log(`Removed ${modHome} and ${newLayoutPath}`);
-  console.log(`If Herdr was showing that layout, switch back with: herdr-app do layout.switch '{"name":"main"}'`);
+  if (switched) console.log("Herdr was showing quota-main, so it was switched to main first.");
   process.exit(0);
 } else if (mode) {
   fail("Usage: node scripts/install.mjs [--upgrade | --uninstall]");

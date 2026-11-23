@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -24,10 +24,11 @@ const mainLayout = {
 };
 
 function install(appHome, ...args) {
+  const env = typeof args.at(-1) === "object" ? args.pop() : {};
   return spawnSync(process.execPath, ["scripts/install.mjs", ...args], {
     cwd: dirname(dirname(fileURLToPath(import.meta.url))),
     encoding: "utf8",
-    env: { ...process.env, HERDR_APP_HOME: appHome },
+    env: { ...process.env, HERDR_APP_BIN_PATH: join(appHome, "missing-herdr-app"), ...env, HERDR_APP_HOME: appHome },
   });
 }
 
@@ -159,6 +160,45 @@ test("--uninstall removes the mod and the generated layout only", async () => {
     assert.deepEqual(await readdir(join(appHome, "layouts")), ["main.json"]);
     assert.equal(install(appHome, "--uninstall").status, 0);
     assert.notEqual(install(appHome, "--bogus").status, 0);
+  } finally {
+    await rm(appHome, { recursive: true, force: true });
+  }
+});
+
+test("--uninstall switches Herdr away from the generated layout before deleting it", async () => {
+  const appHome = await mkdtemp(join(tmpdir(), "herdr-install-switch-test-"));
+  const mainPath = join(appHome, "layouts", "main.json");
+  const herdr = join(appHome, "herdr-app");
+  const calls = join(appHome, "calls");
+  await mkdir(dirname(mainPath));
+  await writeFile(mainPath, JSON.stringify(mainLayout));
+  // A stand-in herdr-app: logs its arguments, reports $SHOWN as the shown layout, and exits $SWITCH on a switch.
+  await writeFile(herdr, `#!/bin/sh
+echo "$@" >> '${calls}'
+if [ "$1" = status ]; then echo "{\\"layout\\": \\"$SHOWN\\"}"; exit 0; fi
+exit "$SWITCH"
+`);
+  await chmod(herdr, 0o755);
+  const uninstall = (shown, switchStatus) => install(appHome, "--uninstall", {
+    HERDR_APP_BIN_PATH: herdr, SHOWN: shown, SWITCH: String(switchStatus),
+  });
+  try {
+    assert.equal(install(appHome).status, 0);
+    const refused = uninstall("quota-main", 1);
+    assert.notEqual(refused.status, 0);
+    assert.match(refused.stderr, /could not be switched to main/);
+    assert.deepEqual(await readdir(join(appHome, "layouts")), ["main.json", "quota-main.json"]);
+
+    await rm(calls);
+    const result = uninstall("quota-main", 0);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(await readFile(calls, "utf8"), 'status\ndo layout.switch {"name":"main"}\n');
+    assert.deepEqual(await readdir(join(appHome, "layouts")), ["main.json"]);
+
+    assert.equal(install(appHome).status, 0);
+    await rm(calls);
+    assert.equal(uninstall("terminals", 0).status, 0);
+    assert.equal(await readFile(calls, "utf8"), "status\n");
   } finally {
     await rm(appHome, { recursive: true, force: true });
   }
