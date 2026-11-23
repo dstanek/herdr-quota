@@ -175,12 +175,12 @@ test("Claude parses session, weekly, and per-model windows from either response 
       windows[shape] = JSON.parse(result.stdout).providers.claude.windows;
     }
     assert.deepEqual(windows.limits, [
-      { label: "5h", usedPercent: 25, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
-      { label: "7d", usedPercent: 40, resetsAt: Date.parse("2030-01-05T00:00:00Z") },
-      { label: "7d Opus", usedPercent: 10, resetsAt: Date.parse("2030-01-05T00:00:00Z") },
+      { label: "5h", usedPercent: 25, resetsAt: Date.parse("2030-01-01T00:00:00Z"), startsAt: Date.parse("2029-12-31T19:00:00Z") },
+      { label: "7d", usedPercent: 40, resetsAt: Date.parse("2030-01-05T00:00:00Z"), startsAt: Date.parse("2029-12-29T00:00:00Z") },
+      { label: "7d Opus", usedPercent: 10, resetsAt: Date.parse("2030-01-05T00:00:00Z"), startsAt: Date.parse("2029-12-29T00:00:00Z") },
     ]);
     assert.deepEqual(windows.utilization, [
-      { label: "five hour", usedPercent: 12, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
+      { label: "five hour", usedPercent: 12, resetsAt: Date.parse("2030-01-01T00:00:00Z"), startsAt: Date.parse("2029-12-31T19:00:00Z") },
       { label: "seven day", usedPercent: 100, resetsAt: null },
     ]);
   } finally {
@@ -432,8 +432,8 @@ read line; echo '${JSON.stringify({ id: 3, result: limits })}'
     const { plan, windows } = JSON.parse(result.stdout).providers.chatgpt;
     assert.equal(plan, "pro");
     assert.deepEqual(windows, [
-      { label: "5h", usedPercent: 7, resetsAt: 1900000000000 },
-      { label: "7d", usedPercent: 40, resetsAt: 1900500000000 },
+      { label: "5h", usedPercent: 7, resetsAt: 1900000000000, startsAt: 1900000000000 - 300 * 60_000 },
+      { label: "7d", usedPercent: 40, resetsAt: 1900500000000, startsAt: 1900500000000 - 10080 * 60_000 },
       { label: "90m Spark", usedPercent: 3, resetsAt: null },
     ]);
   } finally {
@@ -494,11 +494,12 @@ test("Copilot is read through gh api, which keeps the token out of the collector
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
     assert.equal(snapshot.providers.copilot.plan, "individual");
-    assert.deepEqual(snapshot.providers.copilot.windows.map(({ label, usedPercent, resetsAt }) =>
-      ({ label, usedPercent, resetsAt })), [
-      { label: "1mo", usedPercent: 25, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
-      { label: "1mo Chat", usedPercent: 75, resetsAt: 1900000000000 },
-      { label: "1mo future bucket", usedPercent: 75, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
+    // Each window starts a calendar month before it resets.
+    assert.deepEqual(snapshot.providers.copilot.windows.map(({ label, usedPercent, resetsAt, startsAt }) =>
+      ({ label, usedPercent, resetsAt, startsAt })), [
+      { label: "1mo", usedPercent: 25, resetsAt: Date.parse("2030-01-01T00:00:00Z"), startsAt: Date.parse("2029-12-01T00:00:00Z") },
+      { label: "1mo Chat", usedPercent: 75, resetsAt: 1900000000000, startsAt: Date.parse("2030-02-17T17:46:40Z") },
+      { label: "1mo future bucket", usedPercent: 75, resetsAt: Date.parse("2030-01-01T00:00:00Z"), startsAt: Date.parse("2029-12-01T00:00:00Z") },
     ]);
     assert.equal(await readFile(join(directory, "gh-calls"), "utf8"), "api --include copilot_internal/user\n");
   } finally {

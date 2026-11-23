@@ -31,9 +31,22 @@ function dateMs(value) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function normalizeWindow(label, usedPercent, resetsAt) {
+const hour = 60 * 60_000;
+const day = 24 * hour;
+
+// A window of known length also gets its start, so the panel can mark where an even pace would be.
+function normalizeWindow(label, usedPercent, resetsAt, durationMs) {
   if (typeof usedPercent !== "number" || !Number.isFinite(usedPercent)) return null;
-  return { label, usedPercent: Math.max(0, Math.min(100, usedPercent)), resetsAt: dateMs(resetsAt) };
+  const window = { label, usedPercent: Math.max(0, Math.min(100, usedPercent)), resetsAt: dateMs(resetsAt) };
+  if (window.resetsAt && durationMs > 0) window.startsAt = window.resetsAt - durationMs;
+  return window;
+}
+
+// The length of the calendar month that ends at this time.
+function monthEndingAt(ms) {
+  const start = new Date(ms);
+  start.setUTCMonth(start.getUTCMonth() - 1);
+  return ms - start.getTime();
 }
 
 // A provider that was never set up, as opposed to one that is broken: the panel shows these quietly.
@@ -96,13 +109,15 @@ async function claude() {
     for (const item of body.limits || []) {
       const title = item.kind === "session" ? "5h" : item.kind === "weekly_all" ? "7d"
         : item.kind === "weekly_scoped" ? `7d ${item.scope?.model?.display_name || "model"}` : item.kind;
-      const window = normalizeWindow(title, item.percent, item.resets_at);
+      const duration = item.kind === "session" ? 5 * hour : item.kind?.startsWith("weekly") ? 7 * day : null;
+      const window = normalizeWindow(title, item.percent, item.resets_at, duration);
       if (window) windows.push(window);
     }
     if (!windows.length) {
       for (const [key, item] of Object.entries(body)) {
         if (item && typeof item === "object" && typeof item.utilization === "number") {
-          const window = normalizeWindow(key.replaceAll("_", " "), item.utilization, item.resets_at);
+          const duration = key.startsWith("five_hour") ? 5 * hour : key.startsWith("seven_day") ? 7 * day : null;
+          const window = normalizeWindow(key.replaceAll("_", " "), item.utilization, item.resets_at, duration);
           if (window) windows.push(window);
         }
       }
@@ -200,7 +215,8 @@ async function codex() {
       const mins = item.windowDurationMins;
       const span = !Number.isFinite(mins) ? field
         : mins % 1440 === 0 ? `${mins / 1440}d` : mins % 60 === 0 ? `${mins / 60}h` : `${mins}m`;
-      windows.push(normalizeWindow(`${span}${name ? ` ${name}` : ""}`, item.usedPercent, item.resetsAt));
+      windows.push(normalizeWindow(`${span}${name ? ` ${name}` : ""}`, item.usedPercent, item.resetsAt,
+        Number.isFinite(mins) ? mins * 60_000 : null));
     }
   };
   add(main);
@@ -305,7 +321,9 @@ async function copilot() {
       remainingPercent = item.remaining / item.entitlement * 100;
     } else continue;
     const resetsAt = item.quota_reset_at || body.quota_reset_date_utc || body.quota_reset_date;
-    const window = normalizeWindow(labels[key] || `1mo ${key.replaceAll("_", " ")}`, 100 - remainingPercent, resetsAt);
+    const resetsMs = dateMs(resetsAt);
+    const window = normalizeWindow(labels[key] || `1mo ${key.replaceAll("_", " ")}`, 100 - remainingPercent, resetsAt,
+      resetsMs && monthEndingAt(resetsMs));
     if (window) windows.push(window);
   }
   if (!windows.length) throw new Error("No finite Copilot quota windows returned");
