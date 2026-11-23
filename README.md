@@ -101,7 +101,9 @@ This is a Herdr desktop mod; the separate Herdr mobile app does not currently ru
 ## Development checks
 
 ```sh
-node --check scripts/collect.mjs
+for f in scripts/*.mjs; do node --check "$f"; done
 node --test
 herdr-app check mods/quota
 ```
+
+`node --check` only looks at the first file it is given, hence the loop.
