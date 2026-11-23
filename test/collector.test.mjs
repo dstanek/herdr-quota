@@ -7,6 +7,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readClaudeCredentials } from "../mods/quota/claude-credentials.mjs";
 
+// A stand-in gh: logs its arguments, then prints a response the way `gh api --include` does.
+async function fakeGh(directory, { status = "200 OK", headers = [], body = "", exit = 0 }) {
+  const ghPath = join(directory, "gh");
+  const responsePath = join(directory, "gh-response");
+  await writeFile(responsePath, [`HTTP/2.0 ${status}`, ...headers, "", body].join("\r\n"));
+  await writeFile(ghPath, `#!/bin/sh\necho "$@" >> '${join(directory, "gh-calls")}'\ncat '${responsePath}'\nexit ${exit}\n`);
+  await chmod(ghPath, 0o755);
+  return ghPath;
+}
+
 // Points every provider at nothing, so a test reaches only what it sets up itself.
 function isolatedEnv(directory, overrides = {}) {
   return {
@@ -451,30 +461,27 @@ read line; read line; echo '{"id":2,"result":{"account":{"type":"apiKey"}}}'
   }
 });
 
-test("Copilot parses finite quota snapshots using gh auth without caching credentials", async () => {
+test("Copilot is read through gh api, which keeps the token out of the collector", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-test-"));
   const cachePath = join(directory, "cache.json");
-  const ghPath = join(directory, "gh");
-  const preloadPath = join(directory, "mock-fetch.mjs");
-  await writeFile(ghPath, "#!/bin/sh\nprintf '%s' 'test-copilot-token'\n");
-  await chmod(ghPath, 0o755);
-  await writeFile(preloadPath, `
-    globalThis.fetch = async (_url, options) => {
-      if (options.headers.authorization !== "token test-copilot-token") throw new Error("missing auth");
-      return new Response(JSON.stringify({ copilot_plan: "individual", quota_reset_date_utc: "2030-01-01T00:00:00.000Z", quota_snapshots: {
-        premium_interactions: { percent_remaining: 75, quota_reset_at: 0 },
-        chat: { remaining: 2, entitlement: 8, quota_reset_at: 1900000000 },
-        future_bucket: { remaining: 1, entitlement: 4 },
-        unlimited_bucket: { remaining: 1, entitlement: 4, unlimited: true },
-        zero_bucket: { remaining: 1, entitlement: 0 },
-        negative_remaining: { remaining: -1, entitlement: 4 },
-        excessive_remaining: { remaining: 5, entitlement: 4 },
-        negative_percent: { percent_remaining: -1 },
-        excessive_percent: { percent_remaining: 101 },
-        malformed_bucket: { percent_remaining: "50" }
-      } }));
-    };
-  `);
+  const preloadPath = join(directory, "no-fetch.mjs");
+  const ghPath = await fakeGh(directory, { body: JSON.stringify({
+    copilot_plan: "individual",
+    quota_reset_date_utc: "2030-01-01T00:00:00.000Z",
+    quota_snapshots: {
+      premium_interactions: { percent_remaining: 75, quota_reset_at: 0 },
+      chat: { remaining: 2, entitlement: 8, quota_reset_at: 1900000000 },
+      future_bucket: { remaining: 1, entitlement: 4 },
+      unlimited_bucket: { remaining: 1, entitlement: 4, unlimited: true },
+      zero_bucket: { remaining: 1, entitlement: 0 },
+      negative_remaining: { remaining: -1, entitlement: 4 },
+      excessive_remaining: { remaining: 5, entitlement: 4 },
+      negative_percent: { percent_remaining: -1 },
+      excessive_percent: { percent_remaining: 101 },
+      malformed_bucket: { percent_remaining: "50" },
+    },
+  }) });
+  await writeFile(preloadPath, `globalThis.fetch = async () => { throw new Error("the collector must not fetch for Copilot"); };`);
   try {
     const result = spawnSync(process.execPath, ["--import", preloadPath, "mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
@@ -490,8 +497,27 @@ test("Copilot parses finite quota snapshots using gh auth without caching creden
       { label: "1mo Chat", usedPercent: 75, resetsAt: 1900000000000 },
       { label: "1mo future bucket", usedPercent: 75, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
     ]);
-    const cache = await readFile(cachePath, "utf8");
-    assert.doesNotMatch(cache, /test-copilot-token|Bearer/);
+    assert.equal(await readFile(join(directory, "gh-calls"), "utf8"), "api --include copilot_internal/user\n");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("gh without a sign-in is reported as not signed in", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-nologin-test-"));
+  const ghPath = join(directory, "gh");
+  await writeFile(ghPath, "#!/bin/sh\nexit 4\n");
+  await chmod(ghPath, 0o755);
+  try {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const snapshot = JSON.parse(result.stdout);
+    assert.equal(snapshot.errors.copilot, "GitHub CLI sign-in not found; run gh auth login");
+    assert.equal(snapshot.absent.copilot, true);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -499,23 +525,12 @@ test("Copilot parses finite quota snapshots using gh auth without caching creden
 
 test("a Copilot rate limit starts a cooldown that skips the next request", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-limit-test-"));
-  const ghPath = join(directory, "gh");
-  const preloadPath = join(directory, "mock-fetch.mjs");
-  const callsPath = join(directory, "calls");
-  await writeFile(ghPath, "#!/bin/sh\nprintf '%s' 'test-copilot-token'\n");
-  await chmod(ghPath, 0o755);
-  await writeFile(preloadPath, `
-    import { appendFileSync } from "node:fs";
-    globalThis.fetch = async () => {
-      appendFileSync(${JSON.stringify(callsPath)}, "x");
-      return new Response("", { status: 403, headers: { "retry-after": "180" } });
-    };
-  `);
-  const run = () => spawnSync(process.execPath, ["--import", preloadPath, "mods/quota/collect.mjs"], {
-    cwd: dirname(dirname(fileURLToPath(import.meta.url))),
-    encoding: "utf8",
-    env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
-  });
+  const ghPath = await fakeGh(directory, { status: "403 Forbidden", headers: ["Retry-After: 180"], exit: 1 });
+  const run = () => spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
+    });
   try {
     const first = run();
     assert.equal(first.status, 0, first.stderr);
@@ -523,7 +538,7 @@ test("a Copilot rate limit starts a cooldown that skips the next request", async
     const second = run();
     assert.equal(second.status, 0, second.stderr);
     assert.equal(JSON.parse(second.stdout).errors.copilot, "Rate limited; retry in 3m");
-    assert.equal(await readFile(callsPath, "utf8"), "x");
+    assert.equal(await readFile(join(directory, "gh-calls"), "utf8"), "api --include copilot_internal/user\n");
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -544,11 +559,10 @@ test("provider ids given as arguments limit the run to those providers", async (
   }
 });
 
-test("Copilot rejects oversized gh token output without exposing it", async () => {
+test("Copilot rejects oversized gh output", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-output-test-"));
-  const cachePath = join(directory, "cache.json");
   const ghPath = join(directory, "gh");
-  await writeFile(ghPath, "#!/bin/sh\nprintf '%17000s' 'secret-token'\n");
+  await writeFile(ghPath, "#!/bin/sh\nprintf '%1100000s' 'x'\n");
   await chmod(ghPath, 0o755);
   try {
     const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
@@ -557,17 +571,14 @@ test("Copilot rejects oversized gh token output without exposing it", async () =
       env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
     });
     assert.equal(result.status, 0, result.stderr);
-    const snapshot = JSON.parse(result.stdout);
-    assert.equal(snapshot.errors.copilot, "GitHub CLI token output exceeded the size limit");
-    assert.doesNotMatch(result.stdout, /secret-token|Bearer/);
+    assert.equal(JSON.parse(result.stdout).errors.copilot, "GitHub CLI output exceeded the size limit");
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
 });
 
-test("Copilot times out a hung gh token command with a safe error", async () => {
+test("Copilot times out a hung gh with a safe error", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-timeout-test-"));
-  const cachePath = join(directory, "cache.json");
   const ghPath = join(directory, "gh");
   await writeFile(ghPath, "#!/bin/sh\nexec sleep 30\n");
   await chmod(ghPath, 0o755);
@@ -576,12 +587,10 @@ test("Copilot times out a hung gh token command with a safe error", async () => 
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
-      timeout: 10000,
+      timeout: 15000,
     });
     assert.equal(result.status, 0, result.stderr);
-    const snapshot = JSON.parse(result.stdout);
-    assert.equal(snapshot.errors.copilot, "GitHub CLI token command timed out");
-    assert.doesNotMatch(result.stdout, /Bearer|sleep 30/);
+    assert.equal(JSON.parse(result.stdout).errors.copilot, "GitHub CLI request timed out");
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

@@ -51,13 +51,13 @@ What the collector reaches, per provider:
 
 - **Claude.** Reads the Claude Code sign-in: on macOS by running `security find-generic-password -s "Claude Code-credentials" -w`, falling back to `~/.claude/.credentials.json`; elsewhere from that file. Sends the access token to `https://api.anthropic.com/api/oauth/usage` with `anthropic-beta: oauth-2025-04-20` and the user-agent `herdr-quota/<version>`. The plan comes from the sign-in's `subscriptionType`.
 - **ChatGPT.** Runs `codex app-server --stdio` and asks it, over JSON-RPC, `initialize`, `account/read` and `account/rateLimits/read`. It never sees a Codex credential.
-- **Copilot.** Runs `gh auth token`, then sends that token to `https://api.github.com/copilot_internal/user`. The plan is `copilot_plan`; the reset date is `quota_reset_date_utc`.
+- **Copilot.** Runs `gh api --include copilot_internal/user`, so the GitHub CLI makes the request and the collector never sees a GitHub token. The plan is `copilot_plan`; the reset date is `quota_reset_date_utc`.
 
 Environment overrides: `CLAUDE_CONFIG_DIR`, `CODEX_BIN_PATH`, `GH_BIN_PATH`, `HERDR_QUOTA_CACHE`, and `CLAUDE_SECURITY_COMMAND` (for tests).
 
 ## Watch out
 
-- **Tell the person before adding it.** This mod reaches the network (Anthropic and GitHub), runs programs (`node`, `security`, `codex`, `gh`) and reads a file outside its folder (Claude Code's credentials). No token is written to the cache, to the collector's output or to a log.
+- **Tell the person before adding it.** This mod reaches the network (Anthropic directly; OpenAI and GitHub through their own CLIs), runs programs (`node`, `security`, `codex`, `gh`) and reads a file outside its folder (Claude Code's credentials). The Claude access token is the only credential it handles, and no token is written to the cache, to the collector's output or to a log.
 - **Two of the three endpoints are undocumented.** Anthropic's `oauth/usage` and GitHub's `copilot_internal/user` can change or disappear without notice. Copilot buckets marked unlimited, or without a usable percentage, are skipped.
 - **`node` must be on the path Herdr runs programs with.** Without it the panel shows the failure in the "working" color at the bottom.
 - **The folder name `quota` is assumed twice in `main.js`:** in the collector path and in the search for the panel's own layout block. If the mod is renamed to avoid a clash, change both.

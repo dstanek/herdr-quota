@@ -43,8 +43,7 @@ function absentError(message) {
   return error;
 }
 
-function retryAfterMs(response) {
-  const header = response.headers.get("retry-after");
+function retryAfterMs(header) {
   const seconds = Number(header);
   const retryDate = Date.parse(header);
   return Number.isFinite(seconds) && seconds > 0
@@ -87,7 +86,7 @@ async function claude() {
         : response.status === 429 ? "Usage endpoint is rate limited"
           : `Usage endpoint returned ${response.status}`;
       const error = new Error(reason);
-      if (response.status === 429) error.retryAfter = retryAfterMs(response);
+      if (response.status === 429) error.retryAfter = retryAfterMs(response.headers.get("retry-after"));
       throw error;
     }
     const body = await response.json();
@@ -211,9 +210,11 @@ async function codex() {
   return { plan: resultData?.rateLimits?.planType || account?.planType || null, windows };
 }
 
-async function copilot() {
+// Has the GitHub CLI make the request, so its token never enters this process.
+// --include prints the status line and headers ahead of the body.
+function ghApi(path) {
   const executable = process.env.GH_BIN_PATH || "gh";
-  const token = await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     let child;
     let output = "";
     let outputBytes = 0;
@@ -227,10 +228,10 @@ async function copilot() {
     };
     const timeout = setTimeout(() => {
       child?.kill();
-      finish(new Error("GitHub CLI token command timed out"));
-    }, 5000);
+      finish(new Error("GitHub CLI request timed out"));
+    }, 10000);
     try {
-      child = spawn(executable, ["auth", "token"], {
+      child = spawn(executable, ["api", "--include", path], {
         stdio: ["ignore", "pipe", "ignore"],
         windowsHide: true,
         shell: process.platform === "win32",
@@ -242,73 +243,71 @@ async function copilot() {
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk) => {
       outputBytes += Buffer.byteLength(chunk);
-      if (outputBytes > 16384) {
+      if (outputBytes > 1024 * 1024) {
         child.kill();
-        finish(new Error("GitHub CLI token output exceeded the size limit"));
+        finish(new Error("GitHub CLI output exceeded the size limit"));
         return;
       }
       output += chunk;
     });
     child.on("error", () => finish(absentError("GitHub CLI sign-in not found; run gh auth login")));
-    child.on("exit", (code) => {
-      if (code !== 0) finish(absentError("GitHub CLI sign-in not found; run gh auth login"));
-      else finish(null, output.trim());
+    // gh exits 4 without a sign-in, and 1 on an HTTP error with the response still printed.
+    child.on("close", (code) => {
+      if (code === 4) return finish(absentError("GitHub CLI sign-in not found; run gh auth login"));
+      const split = output.search(/\r?\n\r?\n/);
+      const head = split < 0 ? output : output.slice(0, split);
+      const status = Number(/^HTTP\/[\d.]+ (\d{3})/.exec(head)?.[1]);
+      if (!status) return finish(new Error("GitHub CLI request failed"));
+      finish(null, {
+        status,
+        retryAfter: /^retry-after:\s*(.+?)\s*$/im.exec(head)?.[1] ?? null,
+        body: split < 0 ? "" : output.slice(split).trim(),
+      });
     });
   });
-  if (!token) throw absentError("GitHub CLI sign-in not found; run gh auth login");
+}
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000);
-  try {
-    const response = await fetch("https://api.github.com/copilot_internal/user", {
-      headers: {
-        authorization: `token ${token}`,
-        accept: "application/json",
-        "editor-version": "vscode/1.99.3",
-        "editor-plugin-version": "copilot-chat/0.26.7",
-      },
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      // GitHub signals rate limits with 429, or 403 carrying retry-after.
-      const limited = response.status === 429 || (response.status === 403 && response.headers.has("retry-after"));
-      const error = new Error(limited ? "Copilot usage endpoint is rate limited"
-        : `Copilot usage endpoint returned ${response.status}`);
-      if (limited) error.retryAfter = retryAfterMs(response);
-      throw error;
-    }
-    const body = await response.json();
-    const snapshots = body?.quota_snapshots;
-    if (!snapshots || typeof snapshots !== "object" || Array.isArray(snapshots)) {
-      throw new Error("No Copilot quota snapshots returned");
-    }
-    // Named like the other providers' windows: the period, then what it is scoped to.
-    // Premium requests are the allowance paid plans meter, so they go unscoped.
-    const labels = { premium_interactions: "1mo", chat: "1mo Chat", completions: "1mo Completions" };
-    const windows = [];
-    for (const [key, item] of Object.entries(snapshots)) {
-      if (!item || typeof item !== "object" || item.unlimited === true) continue;
-      let remainingPercent;
-      if (typeof item.percent_remaining === "number" && Number.isFinite(item.percent_remaining)
-        && item.percent_remaining >= 0 && item.percent_remaining <= 100) {
-        remainingPercent = item.percent_remaining;
-      } else if (typeof item.remaining === "number" && Number.isFinite(item.remaining)
-        && typeof item.entitlement === "number" && Number.isFinite(item.entitlement) && item.entitlement > 0
-        && item.remaining >= 0 && item.remaining <= item.entitlement) {
-        remainingPercent = item.remaining / item.entitlement * 100;
-      } else continue;
-      const resetsAt = item.quota_reset_at || body.quota_reset_date_utc || body.quota_reset_date;
-      const window = normalizeWindow(labels[key] || `1mo ${key.replaceAll("_", " ")}`, 100 - remainingPercent, resetsAt);
-      if (window) windows.push(window);
-    }
-    if (!windows.length) throw new Error("No finite Copilot quota windows returned");
-    return { plan: typeof body.copilot_plan === "string" ? body.copilot_plan : null, windows };
-  } catch (error) {
-    if (error.name === "AbortError") throw new Error("Copilot usage request timed out");
+async function copilot() {
+  const response = await ghApi("copilot_internal/user");
+  if (response.status < 200 || response.status > 299) {
+    // GitHub signals rate limits with 429, or 403 carrying retry-after.
+    const limited = response.status === 429 || (response.status === 403 && response.retryAfter !== null);
+    const error = new Error(limited ? "Copilot usage endpoint is rate limited"
+      : `Copilot usage endpoint returned ${response.status}`);
+    if (limited) error.retryAfter = retryAfterMs(response.retryAfter);
     throw error;
-  } finally {
-    clearTimeout(timeout);
   }
+  let body;
+  try {
+    body = JSON.parse(response.body);
+  } catch {
+    throw new Error("Copilot usage response was not JSON");
+  }
+  const snapshots = body?.quota_snapshots;
+  if (!snapshots || typeof snapshots !== "object" || Array.isArray(snapshots)) {
+    throw new Error("No Copilot quota snapshots returned");
+  }
+  // Named like the other providers' windows: the period, then what it is scoped to.
+  // Premium requests are the allowance paid plans meter, so they go unscoped.
+  const labels = { premium_interactions: "1mo", chat: "1mo Chat", completions: "1mo Completions" };
+  const windows = [];
+  for (const [key, item] of Object.entries(snapshots)) {
+    if (!item || typeof item !== "object" || item.unlimited === true) continue;
+    let remainingPercent;
+    if (typeof item.percent_remaining === "number" && Number.isFinite(item.percent_remaining)
+      && item.percent_remaining >= 0 && item.percent_remaining <= 100) {
+      remainingPercent = item.percent_remaining;
+    } else if (typeof item.remaining === "number" && Number.isFinite(item.remaining)
+      && typeof item.entitlement === "number" && Number.isFinite(item.entitlement) && item.entitlement > 0
+      && item.remaining >= 0 && item.remaining <= item.entitlement) {
+      remainingPercent = item.remaining / item.entitlement * 100;
+    } else continue;
+    const resetsAt = item.quota_reset_at || body.quota_reset_date_utc || body.quota_reset_date;
+    const window = normalizeWindow(labels[key] || `1mo ${key.replaceAll("_", " ")}`, 100 - remainingPercent, resetsAt);
+    if (window) windows.push(window);
+  }
+  if (!windows.length) throw new Error("No finite Copilot quota windows returned");
+  return { plan: typeof body.copilot_plan === "string" ? body.copilot_plan : null, windows };
 }
 
 async function persistCache() {

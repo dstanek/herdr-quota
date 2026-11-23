@@ -66,7 +66,7 @@ This removes the mod and the generated `quota-main` layout. If Herdr is showing 
 
 - **Claude:** use your existing Claude Code sign-in. On macOS, the mod reads the `Claude Code-credentials` item from Keychain first, then falls back to `~/.claude/.credentials.json`. Approve Keychain access if macOS prompts. On other platforms it reads the credentials file.
 - **ChatGPT:** sign in to ChatGPT in Codex CLI. The mod asks Codex's local app-server for subscription limits; it does not use API-key billing as a substitute.
-- **GitHub Copilot (experimental):** install GitHub CLI and run `gh auth login`. The collector obtains a token through `gh auth token`; the token is sent only to GitHub and is not written to the output or cache.
+- **GitHub Copilot (experimental):** install GitHub CLI and run `gh auth login`. The collector asks `gh` to make the request itself (`gh api`), so it never sees your GitHub token.
 
 No Claude settings or status-line changes are required. A provider without a usable sign-in shows a status message rather than an estimated quota.
 
