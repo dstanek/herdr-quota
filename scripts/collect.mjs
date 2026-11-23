@@ -333,7 +333,7 @@ async function collectProvider(id, load) {
     delete cache.retryAfter[id];
     providers[id] = snapshot;
   } catch (error) {
-    const message = /ENOENT|not found|not recognized/i.test(String(error.message))
+    const message = id === "chatgpt" && /ENOENT|not found|not recognized/i.test(String(error.message))
       ? "Codex CLI not found; sign in with ChatGPT in Codex"
       : String(error.message || error);
     errors[id] = message;

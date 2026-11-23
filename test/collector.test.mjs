@@ -120,6 +120,31 @@ test("collector uses a fixed Codex app-server argv", async () => {
   assert.match(source, /"app-server", "--stdio"/);
 });
 
+test("missing CLIs are reported against their own provider", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-quota-missing-test-"));
+  try {
+    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HERDR_USAGE_CACHE: join(directory, "cache.json"),
+        CLAUDE_CONFIG_DIR: join(directory, "claude"),
+        CLAUDE_SECURITY_COMMAND: join(directory, "missing-security"),
+        CODEX_BIN_PATH: join(directory, "missing-codex"),
+        GH_BIN_PATH: join(directory, "missing-gh"),
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const snapshot = JSON.parse(result.stdout);
+    assert.equal(snapshot.errors.chatgpt, "Codex CLI not found; sign in with ChatGPT in Codex");
+    assert.equal(snapshot.errors.copilot, "GitHub CLI sign-in not found; run gh auth login");
+    assert.equal(snapshot.errors.claude, "No Claude Code sign-in found");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("Copilot parses finite quota snapshots using gh auth without caching credentials", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-test-"));
   const cachePath = join(directory, "cache.json");
