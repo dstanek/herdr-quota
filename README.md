@@ -41,6 +41,8 @@ No Claude settings or status-line changes are required. A provider without a usa
 
 Copilot usage uses GitHub's undocumented `copilot_internal/user` endpoint. It is best-effort and not a stable or officially supported API; GitHub may change or remove it at any time. Only finite quota buckets with usable remaining percentages are shown.
 
+Claude usage is equally unofficial. The collector sends your Claude Code OAuth token to the undocumented `api.anthropic.com/api/oauth/usage` endpoint and identifies itself with a Claude Code user-agent. Anthropic may change or remove the endpoint, or stop accepting requests made this way, at any time.
+
 ## What it shows
 
 - Short-term and weekly windows when reported by the provider.
