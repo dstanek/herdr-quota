@@ -58,7 +58,7 @@ let claudeSignIn;
 function claudeCredentials() {
   claudeSignIn ??= readClaudeCredentials({
     configDir: process.env.CLAUDE_CONFIG_DIR || join(home, ".claude"),
-    securityCommand: process.env.CLAUDE_SECURITY_COMMAND || "security",
+    securityCommand: process.env.CLAUDE_SECURITY_COMMAND || "/usr/bin/security",
   });
   return claudeSignIn;
 }
@@ -79,6 +79,8 @@ async function claude() {
         "user-agent": `herdr-quota/${version}`,
         accept: "application/json",
       },
+      // The token goes to this host only.
+      redirect: "error",
       signal: controller.signal,
     });
     if (!response.ok) {

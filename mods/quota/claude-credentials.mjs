@@ -2,6 +2,14 @@ import { readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 
+// Only what the collector uses: the refresh token and anything else stored beside it stay here.
+function pick(stored) {
+  const oauth = stored?.claudeAiOauth;
+  if (!oauth || typeof oauth !== "object") return null;
+  const { accessToken, expiresAt, subscriptionType } = oauth;
+  return { claudeAiOauth: { accessToken, expiresAt, subscriptionType } };
+}
+
 function readKeychain(command) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, ["find-generic-password", "-s", "Claude Code-credentials", "-w"], {
@@ -28,7 +36,7 @@ function readKeychain(command) {
       if (code === 44) return resolve(null);
       if (code !== 0) return reject(new Error("Claude Keychain credentials unavailable"));
       try {
-        resolve(JSON.parse(output.trim()));
+        resolve(pick(JSON.parse(output.trim())));
       } catch {
         reject(new Error("Claude Keychain credentials are not valid JSON"));
       }
@@ -39,7 +47,7 @@ function readKeychain(command) {
 export async function readClaudeCredentials({
   platform = process.platform,
   configDir,
-  securityCommand = "security",
+  securityCommand = "/usr/bin/security",
 } = {}) {
   let keychainUnavailable = false;
   if (platform === "darwin") {
@@ -53,9 +61,9 @@ export async function readClaudeCredentials({
   }
 
   try {
-    const file = JSON.parse(await readFile(join(configDir, ".credentials.json"), "utf8"));
+    const file = pick(JSON.parse(await readFile(join(configDir, ".credentials.json"), "utf8")));
     // Lets the caller tell a leftover file apart from the sign-in Keychain would have given.
-    return keychainUnavailable ? { ...file, keychainUnavailable } : file;
+    return file && keychainUnavailable ? { ...file, keychainUnavailable } : file;
   } catch {
     return null;
   }

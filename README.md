@@ -105,7 +105,7 @@ The collector reads a few environment variables, which must be set in the enviro
 | `CODEX_BIN_PATH` | Codex CLI executable | `codex` on `PATH` |
 | `GH_BIN_PATH` | GitHub CLI executable | `gh` on `PATH` |
 | `HERDR_QUOTA_CACHE` | Cache file location | `~/.cache/herdr-quota.json` |
-| `CLAUDE_SECURITY_COMMAND` | macOS Keychain command; exists for the tests | `security` |
+| `CLAUDE_SECURITY_COMMAND` | macOS Keychain command; exists for the tests | `/usr/bin/security` |
 
 By default the panel lists all three providers and reads each one's existing local sign-in, so there is nothing to set up. A provider you have never signed in to stays in the list, dimmed and marked "Not signed in".
 

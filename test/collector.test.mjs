@@ -36,9 +36,10 @@ test("Claude credentials prefer Keychain on macOS and fall back to the credentia
   const configDir = join(directory, ".claude");
   await mkdir(configDir);
   await writeFile(join(configDir, ".credentials.json"), JSON.stringify({
-    claudeAiOauth: { accessToken: "file-token" },
+    claudeAiOauth: { accessToken: "file-token", refreshToken: "file-refresh" },
+    mcpOAuth: { other: "secret" },
   }));
-  await writeFile(keychain, `#!/bin/sh\nprintf '%s' '${JSON.stringify({ claudeAiOauth: { accessToken: "keychain-token" } })}'\n`);
+  await writeFile(keychain, `#!/bin/sh\nprintf '%s' '${JSON.stringify({ claudeAiOauth: { accessToken: "keychain-token", refreshToken: "keychain-refresh" } })}'\n`);
   await chmod(keychain, 0o755);
   try {
     const preferred = await readClaudeCredentials({ platform: "darwin", configDir, securityCommand: keychain });
@@ -51,6 +52,7 @@ test("Claude credentials prefer Keychain on macOS and fall back to the credentia
     assert.equal(fallback.claudeAiOauth.accessToken, "file-token");
     const otherPlatform = await readClaudeCredentials({ platform: "linux", configDir });
     assert.equal(otherPlatform.claudeAiOauth.accessToken, "file-token");
+    assert.doesNotMatch(JSON.stringify([preferred, fallback, otherPlatform]), /refresh|mcpOAuth|secret/);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -157,6 +159,7 @@ test("Claude parses session, weekly, and per-model windows from either response 
         globalThis.fetch = async (url, options) => {
           if (url !== "https://api.anthropic.com/api/oauth/usage") throw new Error("unexpected url");
           if (options.headers.authorization !== "Bearer test-claude-token") throw new Error("missing auth");
+          if (options.redirect !== "error") throw new Error("redirects must be refused");
           if (!/^herdr-quota\\/\\d+\\.\\d+\\.\\d+$/.test(options.headers["user-agent"])) throw new Error("unexpected user-agent");
           return new Response(${JSON.stringify(JSON.stringify(body))});
         };

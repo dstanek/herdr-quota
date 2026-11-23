@@ -49,7 +49,7 @@ The panel runs `node <appHome>/mods/quota/collect.mjs [provider ids]` with a 25-
 
 What the collector reaches, per provider:
 
-- **Claude.** Reads the Claude Code sign-in: on macOS by running `security find-generic-password -s "Claude Code-credentials" -w`, falling back to `~/.claude/.credentials.json`; elsewhere from that file. Sends the access token to `https://api.anthropic.com/api/oauth/usage` with `anthropic-beta: oauth-2025-04-20` and the user-agent `herdr-quota/<version>`. The plan comes from the sign-in's `subscriptionType`.
+- **Claude.** Reads the Claude Code sign-in: on macOS by running `/usr/bin/security find-generic-password -s "Claude Code-credentials" -w`, falling back to `~/.claude/.credentials.json`; elsewhere from that file. Keeps only the access token, its expiry and the plan name, and sends the access token to `https://api.anthropic.com/api/oauth/usage`, refusing redirects, with `anthropic-beta: oauth-2025-04-20` and the user-agent `herdr-quota/<version>`. The plan comes from the sign-in's `subscriptionType`.
 - **ChatGPT.** Runs `codex app-server --stdio` and asks it, over JSON-RPC, `initialize`, `account/read` and `account/rateLimits/read`. It never sees a Codex credential.
 - **Copilot.** Runs `gh api --include copilot_internal/user`, so the GitHub CLI makes the request and the collector never sees a GitHub token. The plan is `copilot_plan`; the reset date is `quota_reset_date_utc`.
 
