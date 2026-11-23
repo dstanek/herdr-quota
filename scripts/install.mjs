@@ -110,6 +110,7 @@ if (!agents || !agents.content) fail("The main layout does not contain the expec
 if (column.type !== "column") fail("The Agents block is not in a column, so Quota cannot be placed beneath it");
 
 await copyMod();
+// The px size is only a starting point: the panel resizes its block to fit, which needs a fixed px size to exist.
 const quota = {
   id: "quota",
   type: "block",
