@@ -29,9 +29,9 @@ function colorFor(t, percent, healthy) {
 function staleLabel(timestamp) {
   if (!timestamp) return "Stale";
   const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000));
-  const age = minutes < 1 ? "just now" : minutes < 60 ? `${minutes}m ago`
-    : `${Math.floor(minutes / 60)}h ago`;
-  return `Stale · ${age}`;
+  const age = minutes < 1 ? "under 1m" : minutes < 60 ? `${minutes}m`
+    : `${Math.floor(minutes / 60)}h`;
+  return `Stale, ${age} old`;
 }
 
 function currentWindow(windows) {
@@ -100,6 +100,8 @@ export default class Quota extends View {
     const data = this.windows[provider.id];
     const error = this.errors[provider.id] || data?.note;
     const windows = Array.isArray(data?.windows) ? data.windows : [];
+    // How old a failed refresh left the reading, then why it failed.
+    const note = [data?.stale ? staleLabel(data.fetchedAt) : "", error].filter(Boolean).join(" · ");
     const absent = !windows.length && Boolean(this.absent[provider.id]);
     const current = currentWindow(windows);
     const currentRemaining = current ? Math.round(100 - current.usedPercent) : null;
@@ -112,8 +114,7 @@ export default class Quota extends View {
           cx.notify();
         })
         .child(div().flex_none().text_color(absent ? t.muted : t.foreground).font_semibold().child(provider.name))
-        .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(data?.stale ? t.working : t.dim)
-          .child(data?.stale ? staleLabel(data.fetchedAt) : plan))
+        .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.dim).child(plan))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(11).font_semibold()
           .text_color(colorFor(t, current.usedPercent, t.foreground)).child(`${currentRemaining}% left`)))
@@ -133,8 +134,8 @@ export default class Quota extends View {
             .child(div().h_full().rounded(2).bg(colorFor(t, used, t.muted)).w(`${remaining}%`)))
           .child(div().text_size(10).text_color(t.dim).child(resetLabel(window.resetsAt)));
       })))
-      .when(Boolean(error) && windows.length > 0, (el) => el.child(div().text_size(9.5)
-        .text_color(t.working).child(error)));
+      .when(Boolean(note) && windows.length > 0, (el) => el.child(div().text_size(9.5)
+        .text_color(t.working).child(note)));
   }
 
   render() {
