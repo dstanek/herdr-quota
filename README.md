@@ -46,9 +46,10 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 ## What it shows
 
 - Short-term and weekly windows when reported by the provider.
-- Remaining quota, reset countdown, and a progress bar in expanded details.
-- Reading age; cached values are marked stale if a refresh fails.
+- Remaining quota, reset countdown, and a bar of what is left in expanded details. Readings turn amber below 40% left and red below 15%.
+- If a refresh fails, the cached reading is marked "Stale" with its age and the reason.
 - Only provider-reported values. Expired windows are hidden.
+- The panel grows and shrinks to fit its rows when it sits in a fixed-height sidebar block, as the installer places it.
 - Automatic refresh every five minutes, plus manual refresh from the panel header.
 
 If Claude rate-limits requests, the collector backs off for the interval Claude asks for (ten minutes if it gives none). ChatGPT and Copilot have no backoff; a failed request is simply retried on the next refresh. In every case the last successful reading stays visible with its age. The cache is stored at `~/.cache/herdr-usage.json` (or under `XDG_CACHE_HOME`) and contains quota percentages, reset times, plan names, and fetch timestamps—not credentials.
