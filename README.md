@@ -89,7 +89,7 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 - When the Claude sign-in has expired, the last reading stays with a dim "Paused until Claude Code next runs". Claude Code renews the sign-in the next time it runs.
 - Only provider-reported values. Expired windows are hidden.
 - The panel grows and shrinks to fit its rows when it sits in a fixed-height sidebar block, as the installer places it.
-- Automatic refresh every five minutes, plus manual refresh from the panel header.
+- Automatic refresh every five minutes unless you choose another interval, plus manual refresh from the panel header.
 
 If Claude or Copilot rate-limits requests, the collector backs off for the interval the provider asks for (ten minutes if it gives none). ChatGPT has no backoff; a failed request is simply retried on the next refresh. In every case the last successful reading stays visible with its age. The cache is stored at `~/.cache/herdr-quota.json` (or under `XDG_CACHE_HOME`) and contains quota percentages, reset times, plan names, and fetch timestamps—not credentials.
 
@@ -128,7 +128,7 @@ The collector reads a few environment variables. Herdr runs it with your user en
 | `CLAUDE_SECURITY_COMMAND` | macOS Keychain command; exists for the tests | `/usr/bin/security` |
 | `GH_TIMEOUT_MS` | How long to wait for `gh`, in milliseconds; exists for the tests | `10000` |
 
-By default the panel checks all three providers and reads each one's existing local sign-in, so there is nothing to set up. A provider you have never signed in to gets no row; one dim line at the bottom names them, for example "Not signed in: GitHub Copilot". Its row appears by itself at the next refresh after you sign in, within five minutes or as soon as you click refresh.
+By default the panel checks all three providers and reads each one's existing local sign-in, so there is nothing to set up. A provider you have never signed in to gets no row; one dim line at the bottom names them, for example "Not signed in: GitHub Copilot". Its row appears by itself at the next refresh after you sign in, within the refresh interval or as soon as you click refresh.
 
 To stop checking a provider, click the gear in the panel's header and untick it. A provider you turn off is not queried at all, and the choice is kept across restarts. Ticking it again reads it straight away.
 
@@ -138,7 +138,7 @@ A layout can also limit or reorder what the panel offers, with a `providers` lis
 "content": { "mod": "quota", "props": { "providers": ["claude", "chatgpt"] } }
 ```
 
-The five-minute refresh interval is fixed. Providers start collapsed, and the ones you open stay open across restarts.
+The panel reads every five minutes. The same settings popup offers 2, 5 or 15 minutes; nothing shorter is offered because Anthropic rate-limits its usage endpoint. Providers start collapsed, and the ones you open stay open across restarts.
 
 This is a Herdr desktop mod; the separate Herdr mobile app does not currently run desktop mods.
 

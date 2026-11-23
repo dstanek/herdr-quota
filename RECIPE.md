@@ -20,9 +20,9 @@ A panel the width of the sidebar (built at 268px), sitting directly beneath Agen
 
 - The gear opens a popup at the pointer, 230px wide, on the popover background: a dim 10.5px heading "Providers to check", then one 30px row per offered provider with its name and a 14px accent-colored check when it is on (`mods/workspace-chrome/check.svg`). A row gets the hover background under the pointer; clicking it turns the provider on or off. A provider that is on but has no sign-in also says "not signed in" (10px, dim). The popup is the same mod opened with `openOverlay({ mod: "quota", kind: "popup", props: { menu: true, … } })`.
 - A provider turned off has no row and is not passed to the collector. Choices are saved in Herdr's shared store under `herdr-quota.settings` as `{ off: [ids], expanded: {id: true} }`. A change re-renders the panel, which reads again for the new choice. With every provider off the panel shows "No providers selected" (10px, dim) and does not run the collector.
-
-- It reads quota when it first appears, every five minutes after that, and when you click refresh. While reading, the header shows "Updating…" in place of the time. With no reading at all it shows "Not updated".
-- Countdowns and ages are redrawn every minute between readings.
+- Beneath the providers the popup has a second heading, "Refresh every", and three rows of the same shape: "2 minutes", "5 minutes", "15 minutes", with the check on the chosen one (5 by default, saved as `minutes`).
+- It reads quota when it first appears, then at the chosen interval, and when you click refresh. One timer ticks every minute; a tick reads again once the interval has passed since the last read began. While reading, the header shows "Updating…" in place of the time. With no reading at all it shows "Not updated".
+- Countdowns and ages are redrawn on every tick between readings.
 - Clicking anywhere on a provider's row expands or collapses it. Any number can be open. Providers start collapsed, and the open ones are remembered across restarts (in Herdr's shared store, under `herdr-quota.settings`).
 - The collapsed row shows the provider's most urgent window: one at 85% used or more; failing that, one that is 10 or more points ahead of an even pace; failing that, the most used. Within each of those the most used wins, and on a tie the first the provider lists.
 - The panel resizes its own layout block to fit its rows, growing when a provider opens and shrinking when it closes. This only happens when the block sits in a column and has a fixed pixel height.
@@ -47,7 +47,7 @@ There is no `layouts/` folder. To show the panel, add this block to a layout the
 
 Optional prop on that block: `"props": { "providers": ["claude", "chatgpt"] }` chooses and orders what the panel offers from `claude`, `chatgpt`, `copilot`. Providers left out are not queried and are not listed in the settings.
 
-From `herdr` the panel uses `appHome`, `checking`, `exec`, `layout`, `props`, `run("layout.resize", {id, px})`, `openOverlay`, `shared`, `setShared` and `theme`, plus `cx.timer.every` for the five-minute and one-minute ticks. Its chevrons are `mods/workspace-chrome/chevron-right.svg` and `chevron-down.svg`; the gear and the check come from the same folder.
+From `herdr` the panel uses `appHome`, `checking`, `exec`, `layout`, `props`, `run("layout.resize", {id, px})`, `openOverlay`, `shared`, `setShared` and `theme`, plus `cx.timer.every` for the one-minute tick. Its chevrons are `mods/workspace-chrome/chevron-right.svg` and `chevron-down.svg`; the gear and the check come from the same folder.
 
 The panel runs `node <appHome>/mods/quota/collect.mjs [provider ids]` with a 25-second timeout. The collector prints `{ providers, errors, absent, paused }`, where each provider is `{ plan, windows: [{ label, usedPercent, resetsAt, startsAt? }], fetchedAt, stale?, note? }`. `startsAt` is set when the window's length is known: 5 hours for Claude's session, 7 days for its weekly windows, the length Codex reports, and a calendar month for Copilot. It keeps its last readings and any cooldowns in `~/.cache/herdr-quota.json` (or under `XDG_CACHE_HOME`), written with mode 0600.
 

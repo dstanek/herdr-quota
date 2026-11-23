@@ -22,6 +22,13 @@ function shownProviders() {
   return offeredProviders().filter((provider) => !off.includes(provider.id));
 }
 
+// How often to read, in minutes. Anthropic rate-limits its usage endpoint, so nothing shorter is offered.
+const INTERVALS = [2, 5, 15];
+function interval() {
+  const minutes = saved().minutes;
+  return INTERVALS.includes(minutes) ? minutes : 5;
+}
+
 const ids = (providers) => providers.map((provider) => provider.id).join(",");
 
 // What the person chose, kept by Herdr across restarts. The store is shared by every mod, hence the prefix.
@@ -103,9 +110,11 @@ export default class Quota extends View {
     this.updatedAt = null;
     this.refresh(cx);
     if (checking()) return;
-    cx.timer.every(300000, (cx) => this.refresh(cx));
-    // Countdowns and ages move on between refreshes.
-    cx.timer.every(60000, (cx) => cx.notify());
+    // One tick a minute moves countdowns and ages on, and reads again once the chosen interval has passed.
+    cx.timer.every(60000, (cx) => {
+      if (Date.now() - this.ranAt >= interval() * 60000 - 5000) this.refresh(cx);
+      else cx.notify();
+    });
   }
 
   refresh(cx) {
@@ -113,6 +122,7 @@ export default class Quota extends View {
     const collector = `${appHome()}/mods/quota/collect.mjs`;
     const shown = shownProviders();
     this.queried = ids(shown);
+    this.ranAt = Date.now();
     this.busy = true;
     cx.notify();
     cx.spawn(async (cx) => {
@@ -153,7 +163,7 @@ export default class Quota extends View {
       mod: "quota",
       kind: "popup",
       width: 230,
-      height: 10 + 28 + offered.length * 30,
+      height: 10 + 28 + offered.length * 30 + 34 + INTERVALS.length * 30,
       props: { menu: true, start: props() ?? {}, absent: offered.filter((provider) => this.hidden(provider)).map((provider) => provider.id) },
     });
   }
@@ -161,18 +171,24 @@ export default class Quota extends View {
   settings(t) {
     const off = saved().off;
     const absent = props().absent || [];
+    const row = (id, label, on, act, note) => h_flex().id(id).h(30).px(8).gap(8).rounded(6).items_center().cursor_pointer()
+      .hover((el) => el.bg(t.hover))
+      .on_click(act)
+      .child(div().flex_1().min_w(0).truncate().text_color(on ? t.foreground : t.muted).child(label))
+      .when(Boolean(note), (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(note)))
+      .child(div().size(14).flex_none()
+        .when(on, (el) => el.child(svg("mods/workspace-chrome/check.svg").size(14).text_color(t.accent))));
     return v_flex().id("quota-settings-menu").w_full().p(5).bg(t.popover).text_size(12.5)
       .child(div().px(8).pt(6).pb(4).text_size(10.5).text_color(t.dim).child("Providers to check"))
       .children(offeredProviders().map((provider) => {
         const on = !off.includes(provider.id);
-        return h_flex().id(`quota-toggle-${provider.id}`).h(30).px(8).gap(8).rounded(6).items_center().cursor_pointer()
-          .hover((el) => el.bg(t.hover))
-          .on_click(() => save({ off: on ? [...off, provider.id] : off.filter((id) => id !== provider.id) }))
-          .child(div().flex_1().min_w(0).truncate().text_color(on ? t.foreground : t.muted).child(provider.name))
-          .when(on && absent.includes(provider.id), (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("not signed in")))
-          .child(div().size(14).flex_none()
-            .when(on, (el) => el.child(svg("mods/workspace-chrome/check.svg").size(14).text_color(t.accent))));
-      }));
+        return row(`quota-toggle-${provider.id}`, provider.name, on,
+          () => save({ off: on ? [...off, provider.id] : off.filter((id) => id !== provider.id) }),
+          on && absent.includes(provider.id) ? "not signed in" : "");
+      }))
+      .child(div().px(8).pt(12).pb(4).text_size(10.5).text_color(t.dim).child("Refresh every"))
+      .children(INTERVALS.map((minutes) => row(`quota-interval-${minutes}`, `${minutes} minutes`, minutes === interval(),
+        () => save({ minutes }))));
   }
 
   // Never signed in, and no earlier reading to show: these get no row.
