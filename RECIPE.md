@@ -67,7 +67,7 @@ Environment overrides: `CLAUDE_CONFIG_DIR`, `CODEX_BIN_PATH`, `GH_BIN_PATH`, `HE
 - **This runtime ignores the options passed to `toLocaleTimeString`**, so the header strips the seconds itself.
 - **`init()` runs during `herdr-app check`.** The refresh returns early when `checking()` is true, so a check never runs the collector.
 - **Without a fixed pixel height in a column, the panel does not resize itself**; it scrolls instead.
-- **Built and run on macOS only.** The collector has Linux and Windows paths that have not been exercised.
+- **Built on macOS and run on macOS and Linux.** The collector has a Windows path that has not been exercised.
 
 ## Done when
 
