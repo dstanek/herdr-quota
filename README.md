@@ -9,6 +9,7 @@ The panel starts compact: each provider shows its current short-term window and 
 ### Requirements
 
 - Herdr desktop app
+- macOS. The collector also has Linux and Windows code paths (a credentials file in place of Keychain, shell-spawned CLIs on Windows), but they are untested, and the tests need a POSIX shell.
 - Node.js 22 or newer
 - Claude Code and/or Codex CLI installed and signed in locally for the providers you want to see
 - GitHub CLI (`gh`) installed and signed in with `gh auth login` to try experimental Copilot usage
