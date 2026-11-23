@@ -9,10 +9,16 @@ const modHome = join(appHome, "mods", "quota");
 const layoutPath = join(appHome, "layouts", "main.json");
 const newLayoutPath = join(appHome, "layouts", "quota-main.json");
 
+// Expected problems get a plain message; anything else still throws with its stack.
+function fail(message) {
+  console.error(message);
+  process.exit(1);
+}
+
 await mkdir(dirname(modHome), { recursive: true });
 try {
   await access(modHome);
-  throw new Error(`Refusing to overwrite existing mod at ${modHome}`);
+  fail(`Refusing to overwrite existing mod at ${modHome}`);
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
 }
@@ -22,11 +28,11 @@ let layout;
 try {
   layout = JSON.parse(await readFile(layoutPath, "utf8"));
 } catch {
-  throw new Error(`Could not read the installed main layout at ${layoutPath}`);
+  fail(`Could not read the installed main layout at ${layoutPath}`);
 }
 try {
   await readFile(newLayoutPath, "utf8");
-  throw new Error(`Refusing to overwrite ${newLayoutPath}`);
+  fail(`Refusing to overwrite ${newLayoutPath}`);
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
 }
@@ -42,8 +48,8 @@ function findParent(node, id) {
 
 const column = findParent(layout, "agents");
 const agents = column?.children.find((child) => child?.id === "agents");
-if (!agents || !agents.content) throw new Error("The main layout does not contain the expected Agents block");
-if (column.type !== "column") throw new Error("The Agents block is not in a column, so Quota cannot be placed beneath it");
+if (!agents || !agents.content) fail("The main layout does not contain the expected Agents block");
+if (column.type !== "column") fail("The Agents block is not in a column, so Quota cannot be placed beneath it");
 
 await cp(join(root, "mods", "quota"), modHome, { recursive: true });
 await cp(join(root, "scripts", "collect.mjs"), join(modHome, "collect.mjs"));

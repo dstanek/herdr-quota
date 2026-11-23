@@ -115,7 +115,7 @@ test("installer refuses to overwrite an existing install", async () => {
     const before = await readFile(layoutPath, "utf8");
     const again = install(appHome);
     assert.notEqual(again.status, 0);
-    assert.match(again.stderr, /Refusing to overwrite existing mod/);
+    assert.match(again.stderr, /^Refusing to overwrite existing mod at .*\n$/);
     assert.equal(await readFile(layoutPath, "utf8"), before);
   } finally {
     await rm(appHome, { recursive: true, force: true });
