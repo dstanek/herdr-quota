@@ -136,7 +136,7 @@ To show only some providers, or to reorder them, add a `providers` list to the Q
 "content": { "mod": "quota", "props": { "providers": ["claude", "chatgpt"] } }
 ```
 
-The five-minute refresh interval is fixed, and providers always start collapsed.
+The five-minute refresh interval is fixed. Providers start collapsed, and the ones you open stay open across restarts.
 
 This is a Herdr desktop mod; the separate Herdr mobile app does not currently run desktop mods.
 

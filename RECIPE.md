@@ -20,7 +20,7 @@ A panel the width of the sidebar (built at 268px), sitting directly beneath Agen
 
 - It reads quota when it first appears, every five minutes after that, and when you click refresh. While reading, the header shows "Updating…" in place of the time. With no reading at all it shows "Not updated".
 - Countdowns and ages are redrawn every minute between readings.
-- Clicking anywhere on a provider's row expands or collapses it. Any number can be open. Providers start collapsed, and the open ones are not remembered across a reload.
+- Clicking anywhere on a provider's row expands or collapses it. Any number can be open. Providers start collapsed, and the open ones are remembered across restarts (in Herdr's shared store, under `herdr-quota.settings`).
 - The collapsed row shows the provider's most urgent window: one at 85% used or more; failing that, one that is 10 or more points ahead of an even pace; failing that, the most used. Within each of those the most used wins, and on a tie the first the provider lists.
 - The panel resizes its own layout block to fit its rows, growing when a provider opens and shrinking when it closes. This only happens when the block sits in a column and has a fixed pixel height.
 - A reading younger than a minute is reused, so a second refresh inside a minute shows the same numbers.
@@ -44,7 +44,7 @@ There is no `layouts/` folder. To show the panel, add this block to a layout the
 
 Optional prop on that block: `"props": { "providers": ["claude", "chatgpt"] }` chooses and orders the rows from `claude`, `chatgpt`, `copilot`. Providers left out are not queried.
 
-From `herdr` the panel uses `appHome`, `checking`, `exec`, `layout`, `props`, `run("layout.resize", {id, px})` and `theme`, plus `cx.timer.every` for the five-minute and one-minute ticks. Its chevrons are `mods/workspace-chrome/chevron-right.svg` and `chevron-down.svg`.
+From `herdr` the panel uses `appHome`, `checking`, `exec`, `layout`, `props`, `run("layout.resize", {id, px})`, `shared`, `setShared` and `theme`, plus `cx.timer.every` for the five-minute and one-minute ticks. Its chevrons are `mods/workspace-chrome/chevron-right.svg` and `chevron-down.svg`.
 
 The panel runs `node <appHome>/mods/quota/collect.mjs [provider ids]` with a 25-second timeout. The collector prints `{ providers, errors, absent, paused }`, where each provider is `{ plan, windows: [{ label, usedPercent, resetsAt, startsAt? }], fetchedAt, stale?, note? }`. `startsAt` is set when the window's length is known: 5 hours for Claude's session, 7 days for its weekly windows, the length Codex reports, and a calendar month for Copilot. It keeps its last readings and any cooldowns in `~/.cache/herdr-quota.json` (or under `XDG_CACHE_HOME`), written with mode 0600.
 

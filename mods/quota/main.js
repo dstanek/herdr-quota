@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { appHome, checking, exec, layout, props, run, theme } from "herdr";
+import { appHome, checking, exec, layout, props, run, setShared, shared, theme } from "herdr";
 
 const PROVIDERS = [
   { id: "claude", name: "Claude", hint: "Claude Code sign-in" },
@@ -13,6 +13,16 @@ function shownProviders() {
   const wanted = props()?.providers;
   if (!Array.isArray(wanted) || !wanted.length) return PROVIDERS;
   return wanted.map((id) => PROVIDERS.find((provider) => provider.id === id)).filter(Boolean);
+}
+
+// What the person chose, kept by Herdr across restarts. The store is shared by every mod, hence the prefix.
+const SAVED = "herdr-quota.settings";
+function saved() {
+  const stored = shared(SAVED);
+  return { expanded: {}, ...(stored && typeof stored === "object" ? stored : {}) };
+}
+function save(change) {
+  setShared(SAVED, { ...saved(), ...change });
 }
 
 function resetLabel(value) {
@@ -78,7 +88,6 @@ export default class Quota extends View {
     this.errors = {};
     this.absent = {};
     this.paused = {};
-    this.expanded = {};
     this.busy = false;
     this.updatedAt = null;
     this.refresh(cx);
@@ -139,14 +148,11 @@ export default class Quota extends View {
     const quiet = Boolean(this.paused[provider.id]);
     const current = urgentWindow(windows);
     const currentUsed = current ? Math.round(current.usedPercent) : null;
-    const open = Boolean(this.expanded[provider.id]);
+    const open = Boolean(saved().expanded[provider.id]);
     const plan = typeof data?.plan === "string" ? data.plan.charAt(0).toUpperCase() + data.plan.slice(1) : "";
     return v_flex().gap(5)
       .child(h_flex().id(`quota-${provider.id}`).items_center().gap(7).cursor_pointer()
-        .on_click((_event, cx) => {
-          this.expanded[provider.id] = !this.expanded[provider.id];
-          cx.notify();
-        })
+        .on_click(() => save({ expanded: { ...saved().expanded, [provider.id]: !open } }))
         .child(div().flex_none().text_color(t.foreground).font_semibold().child(provider.name))
         .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.dim).child(plan))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
