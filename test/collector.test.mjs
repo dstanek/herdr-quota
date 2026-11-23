@@ -143,6 +143,7 @@ test("Claude parses session, weekly, and per-model windows from either response 
         globalThis.fetch = async (url, options) => {
           if (url !== "https://api.anthropic.com/api/oauth/usage") throw new Error("unexpected url");
           if (options.headers.authorization !== "Bearer test-claude-token") throw new Error("missing auth");
+          if (options.headers["user-agent"] !== "herdr-quota/0.1") throw new Error("unexpected user-agent");
           return new Response(${JSON.stringify(JSON.stringify(body))});
         };
       `);

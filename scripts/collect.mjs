@@ -74,7 +74,7 @@ async function claude() {
       headers: {
         authorization: `Bearer ${token}`,
         "anthropic-beta": "oauth-2025-04-20",
-        "user-agent": "claude-cli/2.1.278 (external, cli)",
+        "user-agent": "herdr-quota/0.1",
         accept: "application/json",
       },
       signal: controller.signal,
