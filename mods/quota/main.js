@@ -25,12 +25,12 @@ function colorFor(t, percent) {
   return t.done;
 }
 
-function ageLabel(timestamp, stale) {
-  if (!timestamp) return "";
+function staleLabel(timestamp) {
+  if (!timestamp) return "Stale";
   const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000));
   const age = minutes < 1 ? "just now" : minutes < 60 ? `${minutes}m ago`
     : `${Math.floor(minutes / 60)}h ago`;
-  return stale ? `Stale · ${age}` : `Updated ${age}`;
+  return `Stale · ${age}`;
 }
 
 function currentWindow(windows) {
@@ -90,12 +90,11 @@ export default class Quota extends View {
           cx.notify();
         })
         .child(div().size(7).flex_none().rounded_full().bg(windows.length ? data.stale ? t.working : t.done : t.dim))
-        .child(div().text_color(t.foreground).font_semibold().child(provider.name))
-        .when(Boolean(data?.fetchedAt), (el) => el.child(div().text_size(9)
-          .text_color(data.stale ? t.working : t.dim).child(ageLabel(data.fetchedAt, data.stale))))
-        .child(div().flex_1())
-        .when(current, (el) => el.child(div().text_size(10).text_color(t.dim).child(current.label)))
-        .when(current, (el) => el.child(div().text_size(11).font_semibold()
+        .child(div().flex_none().text_color(t.foreground).font_semibold().child(provider.name))
+        .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.working)
+          .child(data?.stale ? staleLabel(data.fetchedAt) : ""))
+        .when(current, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
+        .when(current, (el) => el.child(div().flex_none().text_size(11).font_semibold()
           .text_color(colorFor(t, current.usedPercent)).child(`${currentRemaining}% left`)))
         .child(div().text_size(10).text_color(t.dim).child(open ? "⌄" : "›")))
       .when(!windows.length, (el) => el.when(open || Boolean(error), (inner) => inner
