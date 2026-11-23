@@ -8,7 +8,7 @@ A sidebar panel that shows how much of your Claude Code, ChatGPT (Codex) and Git
 
 A panel the width of the sidebar (built at 268px), sitting directly beneath Agents. It has the sidebar's chrome background and a 1px top border in the border color. Everything is drawn in theme colors, so it follows light and dark themes.
 
-- **Header, 41px tall.** "Quota" at the left, 11.5px, medium weight, dim. At the right, the time of the newest reading (10px, dim, hours and minutes only), then a 26px refresh button showing "↻" with 6px corners. The button gets the hover background and foreground color under the pointer and the tooltip "Refresh quota".
+- **Header, 41px tall.** "Quota" at the left, 11.5px, medium weight, dim. At the right, the time of the newest reading (10px, dim, hours and minutes only), then a 26px settings button showing a 13px gear (`mods/workspace-chrome/settings.svg`, tooltip "Quota settings"), then a 26px refresh button showing "↻" with 6px corners. The button gets the hover background and foreground color under the pointer and the tooltip "Refresh quota".
 - **One row per provider, 12px apart**, inset 16px from the left and 12px from the right: Claude, ChatGPT, GitHub Copilot. Left to right: the name (13px, semibold), the plan the provider reports with its first letter capitalized (9px, dim, for example "Max", "Plus", "Individual"), then at the right edge the most urgent window's label (10px, dim, for example "5h" or "1mo"), "6% used" (11px, semibold) and an 11px chevron pointing right.
 - **An expanded provider** swaps its chevron to point down, drops the label and percentage from its row, and lists every window beneath, 5px apart. Each window is: its label (11px, muted) with "38% used" (11px, semibold) at the right; a 4px bar with 2px corners on a border-colored track, filled to the share that is used, with a 2px-wide, 8px-tall foreground-colored tick at the share of the window that has passed, where the fill would be at an even pace (shown when the window's start is known, moving right as the window runs); and "Resets in 2h 24m" (10px, dim).
 - **Color means attention.** A reading is foreground-colored with a muted bar until 60% is used, the "working" color from 60% used or once usage is 10 or more points ahead of an even pace through the window (50% used a fifth of the way through), and the "blocked" color from 85% used.
@@ -17,6 +17,9 @@ A panel the width of the sidebar (built at 268px), sitting directly beneath Agen
 - **A failed refresh** adds one 9.5px line in the "working" color under the provider: how old the reading is, then why, for example "Stale, 47m old · Rate limited; retry in 8m". A provider that fails with no earlier reading shows the reason alone, at 11px.
 
 ## How it behaves
+
+- The gear opens a popup at the pointer, 230px wide, on the popover background: a dim 10.5px heading "Providers to check", then one 30px row per offered provider with its name and a 14px accent-colored check when it is on (`mods/workspace-chrome/check.svg`). A row gets the hover background under the pointer; clicking it turns the provider on or off. A provider that is on but has no sign-in also says "not signed in" (10px, dim). The popup is the same mod opened with `openOverlay({ mod: "quota", kind: "popup", props: { menu: true, … } })`.
+- A provider turned off has no row and is not passed to the collector. Choices are saved in Herdr's shared store under `herdr-quota.settings` as `{ off: [ids], expanded: {id: true} }`. A change re-renders the panel, which reads again for the new choice. With every provider off the panel shows "No providers selected" (10px, dim) and does not run the collector.
 
 - It reads quota when it first appears, every five minutes after that, and when you click refresh. While reading, the header shows "Updating…" in place of the time. With no reading at all it shows "Not updated".
 - Countdowns and ages are redrawn every minute between readings.
@@ -42,9 +45,9 @@ There is no `layouts/` folder. To show the panel, add this block to a layout the
 { "id": "quota", "type": "block", "size": { "px": 220 }, "min": 110, "content": { "mod": "quota" } }
 ```
 
-Optional prop on that block: `"props": { "providers": ["claude", "chatgpt"] }` chooses and orders the rows from `claude`, `chatgpt`, `copilot`. Providers left out are not queried.
+Optional prop on that block: `"props": { "providers": ["claude", "chatgpt"] }` chooses and orders what the panel offers from `claude`, `chatgpt`, `copilot`. Providers left out are not queried and are not listed in the settings.
 
-From `herdr` the panel uses `appHome`, `checking`, `exec`, `layout`, `props`, `run("layout.resize", {id, px})`, `shared`, `setShared` and `theme`, plus `cx.timer.every` for the five-minute and one-minute ticks. Its chevrons are `mods/workspace-chrome/chevron-right.svg` and `chevron-down.svg`.
+From `herdr` the panel uses `appHome`, `checking`, `exec`, `layout`, `props`, `run("layout.resize", {id, px})`, `openOverlay`, `shared`, `setShared` and `theme`, plus `cx.timer.every` for the five-minute and one-minute ticks. Its chevrons are `mods/workspace-chrome/chevron-right.svg` and `chevron-down.svg`; the gear and the check come from the same folder.
 
 The panel runs `node <appHome>/mods/quota/collect.mjs [provider ids]` with a 25-second timeout. The collector prints `{ providers, errors, absent, paused }`, where each provider is `{ plan, windows: [{ label, usedPercent, resetsAt, startsAt? }], fetchedAt, stale?, note? }`. `startsAt` is set when the window's length is known: 5 hours for Claude's session, 7 days for its weekly windows, the length Codex reports, and a calendar month for Copilot. It keeps its last readings and any cooldowns in `~/.cache/herdr-quota.json` (or under `XDG_CACHE_HOME`), written with mode 0600.
 

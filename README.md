@@ -130,7 +130,9 @@ The collector reads a few environment variables. Herdr runs it with your user en
 
 By default the panel checks all three providers and reads each one's existing local sign-in, so there is nothing to set up. A provider you have never signed in to gets no row; one dim line at the bottom names them, for example "Not signed in: GitHub Copilot". Its row appears by itself at the next refresh after you sign in, within five minutes or as soon as you click refresh.
 
-To show only some providers, or to reorder them, add a `providers` list to the Quota block in your layout (`~/.config/herdr-app/layouts/quota-main.json`). The ids are `claude`, `chatgpt`, and `copilot`; providers left out are not queried at all:
+To stop checking a provider, click the gear in the panel's header and untick it. A provider you turn off is not queried at all, and the choice is kept across restarts. Ticking it again reads it straight away.
+
+A layout can also limit or reorder what the panel offers, with a `providers` list on the Quota block (`~/.config/herdr-app/layouts/quota-main.json`). The ids are `claude`, `chatgpt`, and `copilot`; providers left out do not appear in the panel or in its settings:
 
 ```json
 "content": { "mod": "quota", "props": { "providers": ["claude", "chatgpt"] } }

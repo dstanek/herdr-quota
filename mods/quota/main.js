@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { appHome, checking, exec, layout, props, run, setShared, shared, theme } from "herdr";
+import { appHome, checking, exec, layout, openOverlay, props, run, setShared, shared, theme } from "herdr";
 
 const PROVIDERS = [
   { id: "claude", name: "Claude", hint: "Claude Code sign-in" },
@@ -8,18 +8,27 @@ const PROVIDERS = [
   { id: "copilot", name: "GitHub Copilot", hint: "GitHub CLI sign-in (experimental)" },
 ];
 
-// The layout block's `providers` prop picks and orders the rows; without it, all of them.
-function shownProviders() {
-  const wanted = props()?.providers;
+// The layout block's `providers` prop picks and orders what the panel offers; without it, all of them.
+// The settings popup is a second copy of the mod, handed the panel's props as `start`.
+function offeredProviders() {
+  const wanted = (props()?.menu ? props().start : props())?.providers;
   if (!Array.isArray(wanted) || !wanted.length) return PROVIDERS;
   return wanted.map((id) => PROVIDERS.find((provider) => provider.id === id)).filter(Boolean);
 }
+
+// The offered providers the person has not turned off. Only these are queried.
+function shownProviders() {
+  const off = saved().off;
+  return offeredProviders().filter((provider) => !off.includes(provider.id));
+}
+
+const ids = (providers) => providers.map((provider) => provider.id).join(",");
 
 // What the person chose, kept by Herdr across restarts. The store is shared by every mod, hence the prefix.
 const SAVED = "herdr-quota.settings";
 function saved() {
   const stored = shared(SAVED);
-  return { expanded: {}, ...(stored && typeof stored === "object" ? stored : {}) };
+  return { expanded: {}, off: [], ...(stored && typeof stored === "object" ? stored : {}) };
 }
 function save(change) {
   setShared(SAVED, { ...saved(), ...change });
@@ -84,6 +93,8 @@ function fixedBlock(node, parent) {
 
 export default class Quota extends View {
   init(_props, cx) {
+    // The settings popup only draws; the panel does the reading.
+    if (props()?.menu) return;
     this.windows = {};
     this.errors = {};
     this.absent = {};
@@ -100,12 +111,15 @@ export default class Quota extends View {
   refresh(cx) {
     if (this.busy || checking()) return;
     const collector = `${appHome()}/mods/quota/collect.mjs`;
+    const shown = shownProviders();
+    this.queried = ids(shown);
     this.busy = true;
     cx.notify();
     cx.spawn(async (cx) => {
       try {
-        const only = shownProviders().length < PROVIDERS.length ? shownProviders().map((provider) => provider.id) : [];
-        const result = await exec("node", [collector, ...only], { timeout: 25000 });
+        // With no ids the collector reads every provider, so an empty choice must not reach it.
+        const only = shown.length < PROVIDERS.length ? shown.map((provider) => provider.id) : [];
+        const result = shown.length ? await exec("node", [collector, ...only], { timeout: 25000 }) : { code: 0, stdout: "{}" };
         if (result.code !== 0) throw new Error("Quota collector failed");
         const snapshot = JSON.parse(result.stdout);
         this.windows = snapshot.providers || {};
@@ -131,6 +145,34 @@ export default class Quota extends View {
     // The panel's top border, its header, the rows and the padding beneath them.
     const px = Math.ceil(1 + 41 + height + 10);
     if (block && block.size.px !== px) run("layout.resize", { id: block.id, px });
+  }
+
+  openSettings() {
+    const offered = offeredProviders();
+    openOverlay({
+      mod: "quota",
+      kind: "popup",
+      width: 230,
+      height: 10 + 28 + offered.length * 30,
+      props: { menu: true, start: props() ?? {}, absent: offered.filter((provider) => this.hidden(provider)).map((provider) => provider.id) },
+    });
+  }
+
+  settings(t) {
+    const off = saved().off;
+    const absent = props().absent || [];
+    return v_flex().id("quota-settings-menu").w_full().p(5).bg(t.popover).text_size(12.5)
+      .child(div().px(8).pt(6).pb(4).text_size(10.5).text_color(t.dim).child("Providers to check"))
+      .children(offeredProviders().map((provider) => {
+        const on = !off.includes(provider.id);
+        return h_flex().id(`quota-toggle-${provider.id}`).h(30).px(8).gap(8).rounded(6).items_center().cursor_pointer()
+          .hover((el) => el.bg(t.hover))
+          .on_click(() => save({ off: on ? [...off, provider.id] : off.filter((id) => id !== provider.id) }))
+          .child(div().flex_1().min_w(0).truncate().text_color(on ? t.foreground : t.muted).child(provider.name))
+          .when(on && absent.includes(provider.id), (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("not signed in")))
+          .child(div().size(14).flex_none()
+            .when(on, (el) => el.child(svg("mods/workspace-chrome/check.svg").size(14).text_color(t.accent))));
+      }));
   }
 
   // Never signed in, and no earlier reading to show: these get no row.
@@ -178,17 +220,26 @@ export default class Quota extends View {
         .text_color(quiet ? t.dim : t.working).child(note)));
   }
 
-  render() {
+  render(cx) {
     const t = theme();
+    if (props()?.menu) return this.settings(t);
+    // A change in the settings popup arrives as a re-render: read again for the new choice.
+    const shown = shownProviders();
+    if (ids(shown) !== this.queried && !this.busy && !checking()) cx.spawn(async (cx) => this.refresh(cx));
     // The runtime ignores toLocaleTimeString's options, so drop the seconds by hand.
     const updated = this.updatedAt ? new Date(this.updatedAt).toLocaleTimeString().replace(/(\d+:\d+):\d+/, "$1") : null;
-    const hidden = shownProviders().filter((provider) => this.hidden(provider));
+    const hidden = shown.filter((provider) => this.hidden(provider));
     return v_flex().id("quota-panel").size_full().min_h(0).bg(t.chrome).border_t(1).border_color(t.border)
       .text_size(13)
       .child(h_flex().h(41).pl(16).pr(10).pt(14).pb(5).flex_none().items_center().justify_between()
         .child(div().text_size(11.5).font_medium().text_color(t.dim).child("Quota"))
-        .child(h_flex().items_center().gap(7)
-        .child(div().text_size(10).text_color(t.dim).child(this.busy ? "Updating…" : updated || "Not updated"))
+        .child(h_flex().items_center().gap(3)
+        .child(div().mr(4).text_size(10).text_color(t.dim).child(this.busy ? "Updating…" : updated || "Not updated"))
+        .child(div().id("quota-settings").size(26).flex_none().flex().items_center().justify_center().rounded(6).cursor_pointer().text_color(t.dim)
+          .hover((el) => el.bg(t.hover).text_color(t.foreground))
+          .tooltip("Quota settings")
+          .on_click(() => this.openSettings())
+          .child(svg("mods/workspace-chrome/settings.svg").size(13)))
         .child(div().id("quota-refresh").size(26).flex_none().flex().items_center().justify_center().rounded(6).cursor_pointer().text_color(t.dim)
           .hover((el) => el.bg(t.hover).text_color(t.foreground))
           .tooltip("Refresh quota")
@@ -196,7 +247,8 @@ export default class Quota extends View {
           .child("↻"))))
       .child(v_flex().id("quota-content").flex_1().min_h(0).pl(16).pr(12).pb(10).overflow_y_scrollbar().mode("always")
         .child(v_flex().id("quota-rows").flex_none().gap(12).on_size_change((size) => this.fit(size.height))
-          .children(shownProviders().filter((provider) => !this.hidden(provider)).map((provider) => this.provider(t, provider)))
+          .children(shown.filter((provider) => !this.hidden(provider)).map((provider) => this.provider(t, provider)))
+          .when(!shown.length, (el) => el.child(div().text_size(10).text_color(t.dim).child("No providers selected")))
           .when(hidden.length > 0, (el) => el.child(div().text_size(10).text_color(t.dim)
             .child(`Not signed in: ${hidden.map((provider) => provider.name).join(", ")}`)))
           .when(Boolean(this.errors.panel), (el) => el.child(div().text_size(10).text_color(t.working).child(this.errors.panel)))));
