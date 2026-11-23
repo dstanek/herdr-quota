@@ -331,7 +331,9 @@ async function collectProvider(id, load) {
     const expiresMs = dateMs(expiresAt);
     if (Number.isFinite(expiresMs) && expiresMs <= now) {
       delete cache.retryAfter[id];
-      errors[id] = "Claude sign-in expired; run claude to refresh it";
+      errors[id] = credentials.keychainUnavailable
+        ? "Could not read the Claude sign-in from Keychain; approve access if macOS asks"
+        : "Claude sign-in expired; run claude to refresh it";
       if (oldWindows.length) providers[id] = { ...previous, windows: oldWindows, stale: true, note: errors[id] };
       return;
     }

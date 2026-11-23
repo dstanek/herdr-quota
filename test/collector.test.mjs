@@ -98,11 +98,15 @@ test("expired Claude OAuth credentials suppress usage requests and clear retry c
     providers: {},
     retryAfter: { claude: now + 10 * 60_000, chatgpt: now + 10 * 60_000 },
   }));
+  // Keychain has no item, so the expired file is the sign-in.
+  const keychain = join(directory, "security");
+  await writeFile(keychain, "#!/bin/sh\nexit 44\n");
+  await chmod(keychain, 0o755);
   try {
     const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: isolatedEnv(directory),
+      env: isolatedEnv(directory, { CLAUDE_SECURITY_COMMAND: keychain }),
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
@@ -184,6 +188,31 @@ test("collector starts Codex with a fixed app-server argv", async () => {
     });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(await readFile(argvPath, "utf8"), "app-server\n--stdio\n");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("a failed Keychain read is not reported as an expired sign-in", { skip: process.platform !== "darwin" }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-claude-keychain-fail-test-"));
+  const configDir = join(directory, "claude");
+  const keychain = join(directory, "security");
+  await mkdir(configDir);
+  await writeFile(join(configDir, ".credentials.json"), JSON.stringify({
+    claudeAiOauth: { accessToken: "leftover-token", expiresAt: Date.now() - 1000 },
+  }));
+  await writeFile(keychain, "#!/bin/sh\nexit 1\n");
+  await chmod(keychain, 0o755);
+  try {
+    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: isolatedEnv(directory, { CLAUDE_SECURITY_COMMAND: keychain }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const snapshot = JSON.parse(result.stdout);
+    assert.equal(snapshot.errors.claude, "Could not read the Claude sign-in from Keychain; approve access if macOS asks");
+    assert.doesNotMatch(result.stdout, /leftover-token/);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

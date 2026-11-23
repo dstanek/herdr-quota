@@ -24,6 +24,8 @@ function readKeychain(command) {
     });
     child.once("close", (code) => {
       clearTimeout(timeout);
+      // 44: no such item, the normal state for an install that uses the credential file.
+      if (code === 44) return resolve(null);
       if (code !== 0) return reject(new Error("Claude Keychain credentials unavailable"));
       try {
         resolve(JSON.parse(output.trim()));
@@ -39,17 +41,21 @@ export async function readClaudeCredentials({
   configDir,
   securityCommand = "security",
 } = {}) {
+  let keychainUnavailable = false;
   if (platform === "darwin") {
     try {
       const keychain = await readKeychain(securityCommand);
       if (keychain?.claudeAiOauth?.accessToken) return keychain;
     } catch {
       // Older installs and headless environments may still use the credential file.
+      keychainUnavailable = true;
     }
   }
 
   try {
-    return JSON.parse(await readFile(join(configDir, ".credentials.json"), "utf8"));
+    const file = JSON.parse(await readFile(join(configDir, ".credentials.json"), "utf8"));
+    // Lets the caller tell a leftover file apart from the sign-in Keychain would have given.
+    return keychainUnavailable ? { ...file, keychainUnavailable } : file;
   } catch {
     return null;
   }
