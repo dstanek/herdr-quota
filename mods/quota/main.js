@@ -1,4 +1,4 @@
-import { View, div } from "gpui-kit";
+import { View, div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
 import { exec, props, theme } from "herdr";
 
@@ -102,7 +102,7 @@ export default class Quota extends View {
         .when(current, (el) => el.child(div().flex_none().text_size(11).font_semibold()
           .text_color(colorFor(t, current.usedPercent, t.foreground)).child(`${currentRemaining}% left`)))
         .when(absent, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("Not signed in")))
-        .child(div().text_size(10).text_color(t.dim).child(open ? "⌄" : "›")))
+        .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(11).flex_none().text_color(t.dim)))
       .when(!windows.length, (el) => el.when(open || (Boolean(error) && !absent), (inner) => inner
         .child(div().text_size(11).text_color(error && !absent ? t.working : t.dim)
           .child(error || `${provider.hint} not detected`))))
