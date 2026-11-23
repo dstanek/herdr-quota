@@ -33,6 +33,20 @@ function interval() {
 // The parts of a provider's row the person can hide.
 const PARTS = [["icon", "Icon"], ["name", "Name"], ["plan", "Plan"]];
 
+// The header's clock. Until one is chosen it follows what the runtime's locale writes.
+const CLOCKS = [[12, "12-hour"], [24, "24-hour"]];
+function clock() {
+  const hours = saved().clock;
+  if (hours === 12 || hours === 24) return hours;
+  return /[ap]\.?\s?m/i.test(new Date().toLocaleTimeString()) ? 12 : 24;
+}
+function timeLabel(timestamp) {
+  const date = new Date(timestamp);
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  if (clock() === 24) return `${String(date.getHours()).padStart(2, "0")}:${minutes}`;
+  return `${date.getHours() % 12 || 12}:${minutes} ${date.getHours() < 12 ? "AM" : "PM"}`;
+}
+
 const ids = (providers) => providers.map((provider) => provider.id).join(",");
 
 // What the person chose, kept by Herdr across restarts. The store is shared by every mod, hence the prefix.
@@ -190,7 +204,7 @@ export default class Quota extends View {
       mod: "quota",
       kind: "popup",
       width: 230,
-      height: 10 + 28 + offered.length * 30 + 34 + PARTS.length * 30 + 34 + INTERVALS.length * 30,
+      height: 10 + 28 + offered.length * 30 + 34 + PARTS.length * 30 + 34 + INTERVALS.length * 30 + 34 + CLOCKS.length * 30,
       props: {
         menu: true,
         start: props() ?? {},
@@ -227,7 +241,10 @@ export default class Quota extends View {
       }))
       .child(div().px(8).pt(12).pb(4).text_size(10.5).text_color(t.dim).child("Refresh every"))
       .children(INTERVALS.map((minutes) => row(`quota-interval-${minutes}`, `${minutes} minutes`, minutes === interval(),
-        () => save({ minutes }))));
+        () => save({ minutes }))))
+      .child(div().px(8).pt(12).pb(4).text_size(10.5).text_color(t.dim).child("Clock"))
+      .children(CLOCKS.map(([hours, label]) => row(`quota-clock-${hours}`, label, hours === clock(),
+        () => save({ clock: hours }))));
   }
 
   // Never signed in, and no earlier reading to show: these get no row.
@@ -294,8 +311,7 @@ export default class Quota extends View {
     // A change in the settings popup arrives as a re-render: read again for the new choice.
     const shown = shownProviders();
     if (ids(shown) !== this.queried && !this.busy && !checking()) cx.spawn(async (cx) => this.refresh(cx));
-    // The runtime ignores toLocaleTimeString's options, so drop the seconds by hand.
-    const updated = this.updatedAt ? new Date(this.updatedAt).toLocaleTimeString().replace(/(\d+:\d+):\d+/, "$1") : null;
+    const updated = this.updatedAt ? timeLabel(this.updatedAt) : null;
     const hidden = shown.filter((provider) => this.hidden(provider));
     // A sign-in that is not there and a CLI that cannot be run are different things to fix.
     const signedOut = hidden.filter((provider) => !this.missing[provider.id]);

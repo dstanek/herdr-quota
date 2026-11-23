@@ -140,7 +140,7 @@ A layout can also limit or reorder what the panel offers, with a `providers` lis
 
 The settings popup also chooses what each provider's row shows: its icon, its name and its plan can each be turned off. A row always keeps one of the icon or the name, so you can tell providers apart.
 
-The panel reads every five minutes. The same settings popup offers 2, 5 or 15 minutes; nothing shorter is offered because Anthropic rate-limits its usage endpoint. Providers start collapsed, and the ones you open stay open across restarts.
+The panel reads every five minutes. The same settings popup offers 2, 5 or 15 minutes; nothing shorter is offered because Anthropic rate-limits its usage endpoint. It also sets whether the time in the panel's header is written on a 12-hour or a 24-hour clock; until you choose, it follows your system. Providers start collapsed, and the ones you open stay open across restarts.
 
 This is a Herdr desktop mod; the separate Herdr mobile app does not currently run desktop mods.
 
