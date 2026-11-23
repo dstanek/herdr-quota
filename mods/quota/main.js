@@ -52,11 +52,11 @@ function resetLabel(value) {
   return `Resets in ${remaining}`;
 }
 
-// Color only when quota is running low or going faster than an even pace; a healthy reading stays neutral.
+// Color only when quota is nearly gone or going faster than an even pace; a healthy reading stays neutral.
 function colorFor(t, window, healthy) {
   const used = Number(window.usedPercent) || 0;
   if (used >= 85) return t.blocked;
-  if (used >= 60 || aheadOfPace(window)) return t.working;
+  if (warning(window)) return t.working;
   return healthy;
 }
 
@@ -83,14 +83,19 @@ function aheadOfPace(window) {
   return pace !== null && used >= 20 && used - pace >= 10;
 }
 
+// Worth a look: ahead of pace where the pace is known. Without it, a fixed 60% is the best signal there is.
+function warning(window) {
+  return paceMark(window) === null ? (Number(window.usedPercent) || 0) >= 60 : aheadOfPace(window);
+}
+
 // The same thing in words, for the expanded view. Nothing when on or under pace: that needs no announcing.
 function paceLabel(window) {
   return aheadOfPace(window) ? `${Math.round(window.usedPercent - paceMark(window))}% ahead of pace` : "";
 }
 
-// The window that most needs attention: one nearly used up, then one ahead of pace, then the most used.
+// The window that most needs attention: one nearly used up, then one with a warning, then the most used.
 function urgentWindow(windows) {
-  const rank = (window) => (window.usedPercent >= 85 ? 2 : aheadOfPace(window) ? 1 : 0);
+  const rank = (window) => (window.usedPercent >= 85 ? 2 : warning(window) ? 1 : 0);
   return windows.reduce((urgent, window) => (!urgent || rank(window) > rank(urgent)
     || (rank(window) === rank(urgent) && window.usedPercent > urgent.usedPercent) ? window : urgent), null);
 }

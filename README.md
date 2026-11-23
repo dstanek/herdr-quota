@@ -102,7 +102,7 @@ Each bar in the expanded details has a small vertical mark. The bar's fill is ho
 
 The mark moves right as the window runs, so a reading that was ahead of pace can fall back behind it without any quota being returned.
 
-Color follows the same idea. A reading turns amber at 60% used, or earlier when it is 10 or more points ahead of the mark, and red at 85% used. Pace is ignored below 20% used: just after a reset almost any use is ahead of pace, and none of it is a worry. The collapsed row uses this too: it shows a window that is nearly used up, otherwise one that is ahead of pace, otherwise the most used.
+Color follows the mark. A reading turns amber when it is 10 or more points ahead of the mark, and red at 85% used however it got there. Being well into your quota is not a warning by itself: 61% used with 82% of the week gone stays neutral, because at that rate the quota outlasts the window. Pace is ignored below 20% used: just after a reset almost any use is ahead of pace, and none of it is a worry. A window without a mark has no pace to go by, so it turns amber at 60% used instead. The collapsed row uses this too: it shows a window that is nearly used up, otherwise one that is ahead of pace, otherwise the most used.
 
 A bar has no mark when the provider does not give a reset time or the window's length is not known.
 
