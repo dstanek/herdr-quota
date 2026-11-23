@@ -64,7 +64,17 @@ If Claude rate-limits requests, the collector backs off for the interval Claude 
 
 ## Configuration and scope
 
-There are currently no user-facing settings. The panel always lists all three providers and reads each one's existing local sign-in, so there is no provider setup file to maintain. A provider you have never signed in to stays in the list, dimmed and marked "Not signed in"; it cannot be hidden. The available choices (which providers to enable, refresh interval, or compact/expanded defaults) do not yet justify configuration: adding toggles would make the initial setup more involved without improving the default experience.
+The panel itself has no settings. The collector reads a few environment variables, which must be set in the environment Herdr starts with:
+
+| Variable | Effect | Default |
+|---|---|---|
+| `CLAUDE_CONFIG_DIR` | Directory holding Claude Code's `.credentials.json` | `~/.claude` |
+| `CODEX_BIN_PATH` | Codex CLI executable | `codex` on `PATH` |
+| `GH_BIN_PATH` | GitHub CLI executable | `gh` on `PATH` |
+| `HERDR_USAGE_CACHE` | Cache file location | `~/.cache/herdr-usage.json` |
+| `CLAUDE_SECURITY_COMMAND` | macOS Keychain command; exists for the tests | `security` |
+
+The panel always lists all three providers and reads each one's existing local sign-in, so there is no provider setup file to maintain. A provider you have never signed in to stays in the list, dimmed and marked "Not signed in"; it cannot be hidden. The available choices (which providers to enable, refresh interval, or compact/expanded defaults) do not yet justify configuration: adding toggles would make the initial setup more involved without improving the default experience.
 
 The implementation supports Claude Code and Codex/ChatGPT, plus experimental best-effort GitHub Copilot usage through an undocumented endpoint. More providers can be added when their local auth and quota interfaces can be read reliably. This is a Herdr desktop mod; the separate Herdr mobile app does not currently run desktop mods.
 
