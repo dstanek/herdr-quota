@@ -78,14 +78,14 @@ if (!agents || !agents.content) fail("The main layout does not contain the expec
 if (column.type !== "column") fail("The Agents block is not in a column, so Quota cannot be placed beneath it");
 
 await copyMod();
-const usage = {
+const quota = {
   id: "quota",
   type: "block",
   size: { px: 220 },
   min: 110,
   content: { mod: "quota" },
 };
-column.children.splice(column.children.indexOf(agents) + 1, 0, usage);
+column.children.splice(column.children.indexOf(agents) + 1, 0, quota);
 await writeFile(newLayoutPath, `${JSON.stringify(layout, null, 2)}\n`, { flag: "wx" });
 console.log(`Installed the quota mod at ${modHome}`);
 console.log(`Created ${newLayoutPath}. Switch to it with: herdr-app do layout.switch '{"name":"quota-main"}'`);

@@ -106,7 +106,7 @@ export default class Quota extends View {
     const open = Boolean(this.expanded[provider.id]);
     const plan = typeof data?.plan === "string" ? data.plan.charAt(0).toUpperCase() + data.plan.slice(1) : "";
     return v_flex().gap(5)
-      .child(h_flex().id(`usage-${provider.id}`).items_center().gap(7).cursor_pointer()
+      .child(h_flex().id(`quota-${provider.id}`).items_center().gap(7).cursor_pointer()
         .on_click((_event, cx) => {
           this.expanded[provider.id] = !this.expanded[provider.id];
           cx.notify();
@@ -141,19 +141,19 @@ export default class Quota extends View {
     const t = theme();
     // The runtime ignores toLocaleTimeString's options, so drop the seconds by hand.
     const updated = this.updatedAt ? new Date(this.updatedAt).toLocaleTimeString().replace(/(\d+:\d+):\d+/, "$1") : null;
-    return v_flex().id("usage-panel").size_full().min_h(0).bg(t.chrome).border_t(1).border_color(t.border)
+    return v_flex().id("quota-panel").size_full().min_h(0).bg(t.chrome).border_t(1).border_color(t.border)
       .text_size(13)
       .child(h_flex().h(41).pl(16).pr(10).pt(14).pb(5).flex_none().items_center().justify_between()
         .child(div().text_size(11.5).font_medium().text_color(t.dim).child("Quota"))
         .child(h_flex().items_center().gap(7)
         .child(div().text_size(10).text_color(t.dim).child(this.busy ? "Updating…" : updated || "Not updated"))
-        .child(div().id("usage-refresh").size(26).flex_none().flex().items_center().justify_center().rounded(6).cursor_pointer().text_color(t.dim)
+        .child(div().id("quota-refresh").size(26).flex_none().flex().items_center().justify_center().rounded(6).cursor_pointer().text_color(t.dim)
           .hover((el) => el.bg(t.hover).text_color(t.foreground))
-          .tooltip("Refresh usage")
+          .tooltip("Refresh quota")
           .on_click((_event, cx) => this.refresh(cx))
           .child("↻"))))
-      .child(v_flex().id("usage-content").flex_1().min_h(0).pl(16).pr(12).pb(10).overflow_y_scrollbar().mode("always")
-        .child(v_flex().id("usage-rows").flex_none().gap(12).on_size_change((size) => this.fit(size.height))
+      .child(v_flex().id("quota-content").flex_1().min_h(0).pl(16).pr(12).pb(10).overflow_y_scrollbar().mode("always")
+        .child(v_flex().id("quota-rows").flex_none().gap(12).on_size_change((size) => this.fit(size.height))
           .children(PROVIDERS.map((provider) => this.provider(t, provider)))
           .when(Boolean(this.errors.panel), (el) => el.child(div().text_size(10).text_color(t.working).child(this.errors.panel)))));
   }
