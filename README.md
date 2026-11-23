@@ -51,7 +51,7 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 - Only provider-reported values. Expired windows are hidden.
 - Automatic refresh every five minutes, plus manual refresh from the panel header.
 
-If Claude rate-limits requests, the collector backs off for the interval Claude asks for (ten minutes if it gives none). ChatGPT and Copilot have no backoff; a failed request is simply retried on the next refresh. In every case the last successful reading stays visible with its age. The cache is stored at `~/.cache/herdr-usage.json` (or under `XDG_CACHE_HOME`) and contains quota percentages, reset times, plan names, and fetch timestamps—not credentials. The cache filename is retained from the earlier Herdr Usage name so existing cached readings are preserved.
+If Claude rate-limits requests, the collector backs off for the interval Claude asks for (ten minutes if it gives none). ChatGPT and Copilot have no backoff; a failed request is simply retried on the next refresh. In every case the last successful reading stays visible with its age. The cache is stored at `~/.cache/herdr-usage.json` (or under `XDG_CACHE_HOME`) and contains quota percentages, reset times, plan names, and fetch timestamps—not credentials.
 
 ## Troubleshooting
 
