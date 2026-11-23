@@ -113,4 +113,6 @@ herdr-app check mods/quota
 
 `node --check` only looks at the first file it is given, hence the loop.
 
+`herdr-app check` also writes `mods/quota/gpui-kit.d.ts`, the editor types for the Herdr version you have installed. That file is generated and ignored by version control.
+
 The tests never touch your real sign-ins: each one points the collector at stand-in CLIs, credentials, and responses in a temporary directory.
