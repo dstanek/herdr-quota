@@ -270,7 +270,8 @@ async function copilot() {
         && item.remaining >= 0 && item.remaining <= item.entitlement) {
         remainingPercent = item.remaining / item.entitlement * 100;
       } else continue;
-      const window = normalizeWindow(labels[key] || key.replaceAll("_", " "), 100 - remainingPercent, item.reset_at);
+      const resetsAt = item.quota_reset_at || body.quota_reset_date_utc || body.quota_reset_date;
+      const window = normalizeWindow(labels[key] || key.replaceAll("_", " "), 100 - remainingPercent, resetsAt);
       if (window) windows.push(window);
     }
     if (!windows.length) throw new Error("No finite Copilot quota windows returned");

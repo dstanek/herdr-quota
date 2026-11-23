@@ -214,9 +214,9 @@ test("Copilot parses finite quota snapshots using gh auth without caching creden
   await writeFile(preloadPath, `
     globalThis.fetch = async (_url, options) => {
       if (options.headers.authorization !== "token test-copilot-token") throw new Error("missing auth");
-      return new Response(JSON.stringify({ quota_snapshots: {
-        premium_interactions: { percent_remaining: 75, reset_at: "2030-01-01T00:00:00Z" },
-        chat: { remaining: 2, entitlement: 8, reset_at: "not-a-date" },
+      return new Response(JSON.stringify({ quota_reset_date_utc: "2030-01-01T00:00:00.000Z", quota_snapshots: {
+        premium_interactions: { percent_remaining: 75, quota_reset_at: 0 },
+        chat: { remaining: 2, entitlement: 8, quota_reset_at: 1900000000 },
         future_bucket: { remaining: 1, entitlement: 4 },
         unlimited_bucket: { remaining: 1, entitlement: 4, unlimited: true },
         zero_bucket: { remaining: 1, entitlement: 0 },
@@ -239,8 +239,8 @@ test("Copilot parses finite quota snapshots using gh auth without caching creden
     assert.deepEqual(snapshot.providers.copilot.windows.map(({ label, usedPercent, resetsAt }) =>
       ({ label, usedPercent, resetsAt })), [
       { label: "Premium", usedPercent: 25, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
-      { label: "Chat", usedPercent: 75, resetsAt: null },
-      { label: "future bucket", usedPercent: 75, resetsAt: null },
+      { label: "Chat", usedPercent: 75, resetsAt: 1900000000000 },
+      { label: "future bucket", usedPercent: 75, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
     ]);
     const cache = await readFile(cachePath, "utf8");
     assert.doesNotMatch(cache, /test-copilot-token|Bearer/);
