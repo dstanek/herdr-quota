@@ -9,6 +9,7 @@ const version = "0.1.0";
 const home = homedir();
 const errors = {};
 const absent = {};
+const missing = {};
 const paused = {};
 const providers = {};
 const cachePath = process.env.HERDR_QUOTA_CACHE
@@ -54,6 +55,13 @@ function monthEndingAt(ms) {
 function absentError(message) {
   const error = new Error(message);
   error.absent = true;
+  return error;
+}
+
+// Never set up because its CLI could not be run at all, which is a different thing to fix than a sign-in.
+function missingError(message) {
+  const error = absentError(message);
+  error.missing = true;
   return error;
 }
 
@@ -159,7 +167,7 @@ async function codexRpc() {
     child.kill();
   }, 20000);
   child.on("error", (error) => failWaiting(error.code === "ENOENT"
-    ? absentError("Codex CLI not found; sign in with ChatGPT in Codex")
+    ? missingError("Codex CLI not found; install it or set CODEX_BIN_PATH")
     : error));
   child.stdin.on("error", failWaiting);
   child.on("exit", (code) => {
@@ -264,7 +272,7 @@ function ghApi(path) {
         shell: process.platform === "win32",
       });
     } catch {
-      finish(absentError("GitHub CLI sign-in not found; run gh auth login"));
+      finish(missingError("GitHub CLI not found; install it or set GH_BIN_PATH"));
       return;
     }
     child.stdout.setEncoding("utf8");
@@ -277,7 +285,7 @@ function ghApi(path) {
       }
       output += chunk;
     });
-    child.on("error", () => finish(absentError("GitHub CLI sign-in not found; run gh auth login")));
+    child.on("error", () => finish(missingError("GitHub CLI not found; install it or set GH_BIN_PATH")));
     // gh exits 4 without a sign-in, and 1 on an HTTP error with the response still printed.
     child.on("close", (code) => {
       if (code === 4) return finish(absentError("GitHub CLI sign-in not found; run gh auth login"));
@@ -394,6 +402,7 @@ async function collectProvider(id, load) {
     const message = String(error.message || error);
     errors[id] = message;
     if (error.absent) absent[id] = true;
+    if (error.missing) missing[id] = true;
     if (error.retryAfter) cache.retryAfter[id] = error.retryAfter;
     if (oldWindows.length && Number.isFinite(previous?.fetchedAt)) {
       providers[id] = { ...previous, windows: oldWindows, stale: true, note: message };
@@ -413,4 +422,4 @@ try {
   // Current readings remain usable if the cache directory is unavailable.
 }
 // Exit once the output is out: a timed-out program that ignores its kill would keep this process alive.
-process.stdout.write(JSON.stringify({ providers, errors, absent, paused }), () => process.exit());
+process.stdout.write(JSON.stringify({ providers, errors, absent, missing, paused }), () => process.exit());

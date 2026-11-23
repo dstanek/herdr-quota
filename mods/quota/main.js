@@ -5,8 +5,8 @@ import { appHome, checking, exec, knownAgents, layout, openOverlay, props, run, 
 const PROVIDERS = [
   { id: "claude", name: "Claude", program: "claude", hint: "Claude Code sign-in" },
   // Herdr's Codex icon sits on a white tile, which shows as a box on a light theme; this is the glyph alone.
-  { id: "chatgpt", name: "ChatGPT", program: "codex", icon: "mods/quota/icons/codex.svg", hint: "Codex sign-in" },
-  { id: "copilot", name: "GitHub Copilot", program: "copilot", hint: "GitHub CLI sign-in (experimental)" },
+  { id: "chatgpt", name: "ChatGPT", program: "codex", icon: "mods/quota/icons/codex.svg", cli: "Codex CLI", hint: "Codex sign-in" },
+  { id: "copilot", name: "GitHub Copilot", program: "copilot", cli: "GitHub CLI", hint: "GitHub CLI sign-in (experimental)" },
 ];
 
 // The layout block's `providers` prop picks and orders what the panel offers; without it, all of them.
@@ -124,6 +124,7 @@ export default class Quota extends View {
     this.windows = {};
     this.errors = {};
     this.absent = {};
+    this.missing = {};
     this.paused = {};
     this.busy = false;
     this.updatedAt = null;
@@ -160,6 +161,7 @@ export default class Quota extends View {
         this.windows = snapshot.providers || {};
         this.errors = snapshot.errors || {};
         this.absent = snapshot.absent || {};
+        this.missing = snapshot.missing || {};
         this.paused = snapshot.paused || {};
         // The newest reading, not this run: a run inside a minute returns cached readings.
         const fetched = Object.values(this.windows).map((provider) => provider?.fetchedAt).filter(Number.isFinite);
@@ -189,13 +191,19 @@ export default class Quota extends View {
       kind: "popup",
       width: 230,
       height: 10 + 28 + offered.length * 30 + 34 + PARTS.length * 30 + 34 + INTERVALS.length * 30,
-      props: { menu: true, start: props() ?? {}, absent: offered.filter((provider) => this.hidden(provider)).map((provider) => provider.id) },
+      props: {
+        menu: true,
+        start: props() ?? {},
+        absent: offered.filter((provider) => this.hidden(provider)).map((provider) => provider.id),
+        missing: offered.filter((provider) => this.missing[provider.id]).map((provider) => provider.id),
+      },
     });
   }
 
   settings(t) {
     const off = saved().off;
     const absent = props().absent || [];
+    const missing = props().missing || [];
     const row = (id, label, on, act, note) => h_flex().id(id).h(30).px(8).gap(8).rounded(6).items_center().cursor_pointer()
       .hover((el) => el.bg(t.hover))
       .on_click(act)
@@ -209,7 +217,7 @@ export default class Quota extends View {
         const on = !off.includes(provider.id);
         return row(`quota-toggle-${provider.id}`, provider.name, on,
           () => save({ off: on ? [...off, provider.id] : off.filter((id) => id !== provider.id) }),
-          on && absent.includes(provider.id) ? "not signed in" : "");
+          !on || !absent.includes(provider.id) ? "" : missing.includes(provider.id) ? "CLI not found" : "not signed in");
       }))
       .child(div().px(8).pt(12).pb(4).text_size(10.5).text_color(t.dim).child("Show for each provider"))
       .children(PARTS.map(([part, label]) => {
@@ -289,6 +297,9 @@ export default class Quota extends View {
     // The runtime ignores toLocaleTimeString's options, so drop the seconds by hand.
     const updated = this.updatedAt ? new Date(this.updatedAt).toLocaleTimeString().replace(/(\d+:\d+):\d+/, "$1") : null;
     const hidden = shown.filter((provider) => this.hidden(provider));
+    // A sign-in that is not there and a CLI that cannot be run are different things to fix.
+    const signedOut = hidden.filter((provider) => !this.missing[provider.id]);
+    const notFound = hidden.filter((provider) => this.missing[provider.id]);
     return v_flex().id("quota-panel").size_full().min_h(0).bg(t.chrome).border_t(1).border_color(t.border)
       .text_size(13)
       .child(h_flex().h(41).pl(16).pr(10).pt(14).pb(5).flex_none().items_center().justify_between()
@@ -309,8 +320,10 @@ export default class Quota extends View {
         .child(v_flex().id("quota-rows").flex_none().gap(12).on_size_change((size) => this.fit(size.height))
           .children(shown.filter((provider) => !this.hidden(provider)).map((provider) => this.provider(t, provider)))
           .when(!shown.length, (el) => el.child(div().text_size(10).text_color(t.dim).child("No providers selected")))
-          .when(hidden.length > 0, (el) => el.child(div().text_size(10).text_color(t.dim)
-            .child(`Not signed in: ${hidden.map((provider) => provider.name).join(", ")}`)))
+          .when(signedOut.length > 0, (el) => el.child(div().text_size(10).text_color(t.dim)
+            .child(`Not signed in: ${signedOut.map((provider) => provider.name).join(", ")}`)))
+          .when(notFound.length > 0, (el) => el.child(div().text_size(10).text_color(t.dim)
+            .child(`Not found: ${notFound.map((provider) => provider.cli || provider.name).join(", ")}`)))
           .when(Boolean(this.errors.panel), (el) => el.child(div().text_size(10).text_color(t.working).child(this.errors.panel)))));
   }
 }

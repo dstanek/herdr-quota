@@ -128,7 +128,7 @@ The collector reads a few environment variables. Herdr runs it with your user en
 | `CLAUDE_SECURITY_COMMAND` | macOS Keychain command; exists for the tests | `/usr/bin/security` |
 | `GH_TIMEOUT_MS` | How long to wait for `gh`, in milliseconds; exists for the tests | `10000` |
 
-By default the panel checks all three providers and reads each one's existing local sign-in, so there is nothing to set up. A provider you have never signed in to gets no row; one dim line at the bottom names them, for example "Not signed in: GitHub Copilot". Its row appears by itself at the next refresh after you sign in, within the refresh interval or as soon as you click refresh.
+By default the panel checks all three providers and reads each one's existing local sign-in, so there is nothing to set up. A provider you have never signed in to gets no row; one dim line at the bottom names them, for example "Not signed in: GitHub Copilot". If the provider's command-line tool cannot be run at all, a second line says so instead, for example "Not found: Codex CLI": install the tool, or point `CODEX_BIN_PATH` or `GH_BIN_PATH` at it. Its row appears by itself at the next refresh after you sign in, within the refresh interval or as soon as you click refresh.
 
 To stop checking a provider, click the gear in the panel's header and untick it. A provider you turn off is not queried at all, and the choice is kept across restarts. Ticking it again reads it straight away.
 
