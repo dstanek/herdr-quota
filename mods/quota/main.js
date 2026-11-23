@@ -104,6 +104,7 @@ export default class Quota extends View {
     const current = currentWindow(windows);
     const currentRemaining = current ? Math.round(100 - current.usedPercent) : null;
     const open = Boolean(this.expanded[provider.id]);
+    const plan = typeof data?.plan === "string" ? data.plan.charAt(0).toUpperCase() + data.plan.slice(1) : "";
     return v_flex().gap(5)
       .child(h_flex().id(`usage-${provider.id}`).items_center().gap(7).cursor_pointer()
         .on_click((_event, cx) => {
@@ -111,8 +112,8 @@ export default class Quota extends View {
           cx.notify();
         })
         .child(div().flex_none().text_color(absent ? t.muted : t.foreground).font_semibold().child(provider.name))
-        .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.working)
-          .child(data?.stale ? staleLabel(data.fetchedAt) : ""))
+        .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(data?.stale ? t.working : t.dim)
+          .child(data?.stale ? staleLabel(data.fetchedAt) : plan))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(11).font_semibold()
           .text_color(colorFor(t, current.usedPercent, t.foreground)).child(`${currentRemaining}% left`)))
