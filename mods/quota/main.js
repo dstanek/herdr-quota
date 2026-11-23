@@ -76,7 +76,9 @@ export default class Quota extends View {
         this.windows = snapshot.providers || {};
         this.errors = snapshot.errors || {};
         this.absent = snapshot.absent || {};
-        this.updatedAt = Date.now();
+        // The newest reading, not this run: a run inside a minute returns cached readings.
+        const fetched = Object.values(this.windows).map((provider) => provider?.fetchedAt).filter(Number.isFinite);
+        this.updatedAt = fetched.length ? Math.max(...fetched) : null;
       } catch (error) {
         this.errors = { panel: String(error?.message || error) };
       } finally {
