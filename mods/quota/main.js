@@ -19,10 +19,11 @@ function resetLabel(value) {
   return `Resets in ${remaining}`;
 }
 
-function colorFor(t, percent) {
+// Color only when quota is running low; a healthy reading stays neutral.
+function colorFor(t, percent, healthy) {
   if (percent >= 85) return t.blocked;
   if (percent >= 60) return t.working;
-  return t.done;
+  return healthy;
 }
 
 function staleLabel(timestamp) {
@@ -92,31 +93,29 @@ export default class Quota extends View {
           this.expanded[provider.id] = !this.expanded[provider.id];
           cx.notify();
         })
-        .child(div().size(7).flex_none().rounded_full().bg(windows.length ? data.stale ? t.working : t.done : t.dim))
         .child(div().flex_none().text_color(absent ? t.muted : t.foreground).font_semibold().child(provider.name))
         .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.working)
           .child(data?.stale ? staleLabel(data.fetchedAt) : ""))
         .when(current, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
         .when(current, (el) => el.child(div().flex_none().text_size(11).font_semibold()
-          .text_color(colorFor(t, current.usedPercent)).child(`${currentRemaining}% left`)))
+          .text_color(colorFor(t, current.usedPercent, t.foreground)).child(`${currentRemaining}% left`)))
         .when(absent, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("Not signed in")))
         .child(div().text_size(10).text_color(t.dim).child(open ? "⌄" : "›")))
       .when(!windows.length, (el) => el.when(open || (Boolean(error) && !absent), (inner) => inner
-        .child(div().pl(14).text_size(11).text_color(error && !absent ? t.working : t.dim)
+        .child(div().text_size(11).text_color(error && !absent ? t.working : t.dim)
           .child(error || `${provider.hint} not detected`))))
       .when(open, (el) => el.children(windows.map((window) => {
         const used = Math.max(0, Math.min(100, Number(window.usedPercent) || 0));
         const remaining = 100 - used;
-        const color = colorFor(t, used);
-        return v_flex().pl(14).gap(4)
+        return v_flex().gap(4)
           .child(h_flex().items_center().justify_between()
             .child(div().text_size(11).text_color(t.muted).child(window.label))
-          .child(div().text_size(11).font_semibold().text_color(color).child(`${Math.round(remaining)}% left`)))
+          .child(div().text_size(11).font_semibold().text_color(colorFor(t, used, t.foreground)).child(`${Math.round(remaining)}% left`)))
           .child(div().h(4).w_full().rounded(2).bg(t.border)
-            .child(div().h_full().rounded(2).bg(color).w(`${remaining}%`)))
+            .child(div().h_full().rounded(2).bg(colorFor(t, used, t.muted)).w(`${remaining}%`)))
           .child(div().text_size(10).text_color(t.dim).child(resetLabel(window.resetsAt)));
       })))
-      .when(Boolean(error) && windows.length > 0, (el) => el.child(div().pl(14).text_size(9.5)
+      .when(Boolean(error) && windows.length > 0, (el) => el.child(div().text_size(9.5)
         .text_color(t.working).child(error)));
   }
 
@@ -134,7 +133,7 @@ export default class Quota extends View {
           .tooltip("Refresh usage")
           .on_click((_event, cx) => this.refresh(cx))
           .child("↻"))))
-      .child(v_flex().id("usage-content").flex_1().min_h(0).px(12).pb(10).gap(12).overflow_y_scrollbar().mode("always")
+      .child(v_flex().id("usage-content").flex_1().min_h(0).pl(16).pr(12).pb(10).gap(12).overflow_y_scrollbar().mode("always")
         .children(PROVIDERS.map((provider) => this.provider(t, provider)))
         .when(Boolean(this.errors.panel), (el) => el.child(div().text_size(10).text_color(t.working).child(this.errors.panel))));
   }
