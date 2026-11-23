@@ -80,6 +80,7 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 - The plan each provider reports (for example Max, Plus, Individual), dimmed beside its name.
 - Quota used, reset countdown, and a bar of what is used in expanded details. A tick on the bar marks how much of the window has passed, which is where an even pace would put you: a bar that runs past the tick is using quota faster than the window allows. Readings turn amber at 60% used or when usage is 10 or more points ahead of that even pace, and red at 85% used.
 - If a refresh fails, the cached reading is marked "Stale" with its age and the reason.
+- When the Claude sign-in has expired, the last reading stays with a dim "Paused until Claude Code next runs". Claude Code renews the sign-in the next time it runs.
 - Only provider-reported values. Expired windows are hidden.
 - The panel grows and shrinks to fit its rows when it sits in a fixed-height sidebar block, as the installer places it.
 - Automatic refresh every five minutes, plus manual refresh from the panel header.

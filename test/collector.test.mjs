@@ -122,7 +122,8 @@ test("expired Claude OAuth credentials suppress usage requests and clear retry c
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
-    assert.equal(snapshot.errors.claude, "Claude sign-in expired; run claude to refresh it");
+    assert.equal(snapshot.errors.claude, "Paused until Claude Code next runs");
+    assert.equal(snapshot.paused.claude, true);
     assert.doesNotMatch(result.stdout, /test-only-token|Bearer/);
     const cache = JSON.parse(await readFile(cachePath, "utf8"));
     assert.equal(cache.retryAfter.claude, undefined);
@@ -226,6 +227,7 @@ test("a failed Keychain read is not reported as an expired sign-in", { skip: pro
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
     assert.equal(snapshot.errors.claude, "Could not read the Claude sign-in from Keychain; approve access if macOS asks");
+    assert.equal(snapshot.paused.claude, undefined);
     assert.doesNotMatch(result.stdout, /leftover-token/);
   } finally {
     await rm(directory, { recursive: true, force: true });

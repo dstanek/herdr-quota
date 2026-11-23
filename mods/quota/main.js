@@ -70,6 +70,7 @@ export default class Quota extends View {
     this.windows = {};
     this.errors = {};
     this.absent = {};
+    this.paused = {};
     this.expanded = {};
     this.busy = false;
     this.updatedAt = null;
@@ -94,6 +95,7 @@ export default class Quota extends View {
         this.windows = snapshot.providers || {};
         this.errors = snapshot.errors || {};
         this.absent = snapshot.absent || {};
+        this.paused = snapshot.paused || {};
         // The newest reading, not this run: a run inside a minute returns cached readings.
         const fetched = Object.values(this.windows).map((provider) => provider?.fetchedAt).filter(Number.isFinite);
         this.updatedAt = fetched.length ? Math.max(...fetched) : null;
@@ -121,6 +123,8 @@ export default class Quota extends View {
     // How old a failed refresh left the reading, then why it failed.
     const note = [data?.stale ? staleLabel(data.fetchedAt) : "", error].filter(Boolean).join(" · ");
     const absent = !windows.length && Boolean(this.absent[provider.id]);
+    // An idle Claude Code is not a failure, so its note stays dim.
+    const quiet = absent || Boolean(this.paused[provider.id]);
     const current = currentWindow(windows);
     const currentUsed = current ? Math.round(current.usedPercent) : null;
     const open = Boolean(this.expanded[provider.id]);
@@ -139,7 +143,7 @@ export default class Quota extends View {
         .when(absent, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("Not signed in")))
         .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(11).flex_none().text_color(t.dim)))
       .when(!windows.length, (el) => el.when(open || (Boolean(error) && !absent), (inner) => inner
-        .child(div().text_size(11).text_color(error && !absent ? t.working : t.dim)
+        .child(div().text_size(11).text_color(error && !quiet ? t.working : t.dim)
           .child(error || `${provider.hint} not detected`))))
       .when(open, (el) => el.children(windows.map((window) => {
         const used = Math.max(0, Math.min(100, Number(window.usedPercent) || 0));
@@ -154,7 +158,7 @@ export default class Quota extends View {
           .child(div().text_size(10).text_color(t.dim).child(resetLabel(window.resetsAt)));
       })))
       .when(Boolean(note) && windows.length > 0, (el) => el.child(div().text_size(9.5)
-        .text_color(t.working).child(note)));
+        .text_color(quiet ? t.dim : t.working).child(note)));
   }
 
   render() {

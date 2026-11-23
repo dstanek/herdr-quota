@@ -13,6 +13,7 @@ A panel the width of the sidebar (built at 268px), sitting directly beneath Agen
 - **An expanded provider** swaps its chevron to point down, drops the label and percentage from its row, and lists every window beneath, 5px apart. Each window is: its label (11px, muted) with "38% used" (11px, semibold) at the right; a 4px bar with 2px corners on a border-colored track, filled to the share that is used, with a 2px-wide, 8px-tall foreground-colored tick at the share of the window that has passed, where the fill would be at an even pace (shown when the window's start is known, moving right as the window runs); and "Resets in 2h 24m" (10px, dim).
 - **Color means attention.** A reading is foreground-colored with a muted bar until 60% is used, the "working" color from 60% used or once usage is 10 or more points ahead of an even pace through the window (50% used a fifth of the way through), and the "blocked" color from 85% used.
 - **A provider you have never signed in to** has a muted name and "Not signed in" (10px, dim) where the percentage would be. Expanded, it shows one dim 11px line saying which sign-in was not found.
+- **An expired Claude sign-in** is a pause, not a failure: the last reading stays, with the same line in the dim color, "Stale, 3h old · Paused until Claude Code next runs".
 - **A failed refresh** adds one 9.5px line in the "working" color under the provider: how old the reading is, then why, for example "Stale, 47m old · Rate limited; retry in 8m". A provider that fails with no earlier reading shows the reason alone, at 11px.
 
 ## How it behaves
@@ -45,7 +46,7 @@ Optional prop on that block: `"props": { "providers": ["claude", "chatgpt"] }` c
 
 From `herdr` the panel uses `appHome`, `checking`, `exec`, `layout`, `props`, `run("layout.resize", {id, px})` and `theme`, plus `cx.timer.every` for the five-minute and one-minute ticks. Its chevrons are `mods/workspace-chrome/chevron-right.svg` and `chevron-down.svg`.
 
-The panel runs `node <appHome>/mods/quota/collect.mjs [provider ids]` with a 25-second timeout. The collector prints `{ providers, errors, absent }`, where each provider is `{ plan, windows: [{ label, usedPercent, resetsAt, startsAt? }], fetchedAt, stale?, note? }`. `startsAt` is set when the window's length is known: 5 hours for Claude's session, 7 days for its weekly windows, the length Codex reports, and a calendar month for Copilot. It keeps its last readings and any cooldowns in `~/.cache/herdr-quota.json` (or under `XDG_CACHE_HOME`), written with mode 0600.
+The panel runs `node <appHome>/mods/quota/collect.mjs [provider ids]` with a 25-second timeout. The collector prints `{ providers, errors, absent, paused }`, where each provider is `{ plan, windows: [{ label, usedPercent, resetsAt, startsAt? }], fetchedAt, stale?, note? }`. `startsAt` is set when the window's length is known: 5 hours for Claude's session, 7 days for its weekly windows, the length Codex reports, and a calendar month for Copilot. It keeps its last readings and any cooldowns in `~/.cache/herdr-quota.json` (or under `XDG_CACHE_HOME`), written with mode 0600.
 
 What the collector reaches, per provider:
 
@@ -61,7 +62,7 @@ Environment overrides: `CLAUDE_CONFIG_DIR`, `CODEX_BIN_PATH`, `GH_BIN_PATH`, `HE
 - **Two of the three endpoints are undocumented.** Anthropic's `oauth/usage` and GitHub's `copilot_internal/user` can change or disappear without notice. Copilot buckets marked unlimited, or without a usable percentage, are skipped.
 - **`node` must be on the path Herdr runs programs with.** Without it the panel shows the failure in the "working" color at the bottom.
 - **The folder name `quota` is assumed twice in `main.js`:** in the collector path and in the search for the panel's own layout block. If the mod is renamed to avoid a clash, change both.
-- **The Claude token is never refreshed.** Claude Code does that when it runs. An expired sign-in is reported as "Claude sign-in expired; run claude to refresh it".
+- **The Claude token is never refreshed.** Claude Code does that when it runs. An expired sign-in is reported as "Paused until Claude Code next runs", in the dim color.
 - **macOS may ask for Keychain access.** The collector waits three seconds; if the read fails and only an old credentials file is left, it says so instead of calling the sign-in expired.
 - **This runtime ignores the options passed to `toLocaleTimeString`**, so the header strips the seconds itself.
 - **`init()` runs during `herdr-app check`.** The refresh returns early when `checking()` is true, so a check never runs the collector.
@@ -71,7 +72,7 @@ Environment overrides: `CLAUDE_CONFIG_DIR`, `CODEX_BIN_PATH`, `GH_BIN_PATH`, `HE
 ## Done when
 
 - `herdr-app check mods/quota` passes.
-- `node mods/quota/collect.mjs` exits 0 and prints JSON with `providers`, `errors` and `absent`, even on a machine with nothing signed in.
+- `node mods/quota/collect.mjs` exits 0 and prints JSON with `providers`, `errors`, `absent` and `paused`, even on a machine with nothing signed in.
 - The panel shows a row for each chosen provider, with a percentage for every provider that is signed in and "Not signed in" for the rest.
 - Clicking a row lists its windows and the block grows to fit; clicking again shrinks it back.
 - Clicking refresh shows "Updating…" and then a time.

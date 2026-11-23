@@ -9,6 +9,7 @@ const version = "0.1.0";
 const home = homedir();
 const errors = {};
 const absent = {};
+const paused = {};
 const providers = {};
 const cachePath = process.env.HERDR_QUOTA_CACHE
   || join(process.env.XDG_CACHE_HOME || join(home, ".cache"), "herdr-quota.json");
@@ -355,9 +356,11 @@ async function collectProvider(id, load) {
     const expiresMs = dateMs(expiresAt);
     if (Number.isFinite(expiresMs) && expiresMs <= now) {
       delete cache.retryAfter[id];
+      // Claude Code renews its sign-in when it runs, so an expired one is a pause, not a failure.
+      if (!credentials.keychainUnavailable) paused[id] = true;
       errors[id] = credentials.keychainUnavailable
         ? "Could not read the Claude sign-in from Keychain; approve access if macOS asks"
-        : "Claude sign-in expired; run claude to refresh it";
+        : "Paused until Claude Code next runs";
       if (oldWindows.length) providers[id] = { ...previous, windows: oldWindows, stale: true, note: errors[id] };
       return;
     }
@@ -401,4 +404,4 @@ try {
 } catch {
   // Current readings remain usable if the cache directory is unavailable.
 }
-process.stdout.write(JSON.stringify({ providers, errors, absent }));
+process.stdout.write(JSON.stringify({ providers, errors, absent, paused }));
