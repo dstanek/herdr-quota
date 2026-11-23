@@ -128,7 +128,7 @@ The collector reads a few environment variables. Herdr runs it with your user en
 | `CLAUDE_SECURITY_COMMAND` | macOS Keychain command; exists for the tests | `/usr/bin/security` |
 | `GH_TIMEOUT_MS` | How long to wait for `gh`, in milliseconds; exists for the tests | `10000` |
 
-By default the panel lists all three providers and reads each one's existing local sign-in, so there is nothing to set up. A provider you have never signed in to stays in the list, dimmed and marked "Not signed in".
+By default the panel checks all three providers and reads each one's existing local sign-in, so there is nothing to set up. A provider you have never signed in to gets no row; one dim line at the bottom names them, for example "Not signed in: GitHub Copilot". Its row appears by itself at the next refresh after you sign in, within five minutes or as soon as you click refresh.
 
 To show only some providers, or to reorder them, add a `providers` list to the Quota block in your layout (`~/.config/herdr-app/layouts/quota-main.json`). The ids are `claude`, `chatgpt`, and `copilot`; providers left out are not queried at all:
 

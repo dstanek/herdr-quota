@@ -12,7 +12,7 @@ A panel the width of the sidebar (built at 268px), sitting directly beneath Agen
 - **One row per provider, 12px apart**, inset 16px from the left and 12px from the right: Claude, ChatGPT, GitHub Copilot. Left to right: the name (13px, semibold), the plan the provider reports with its first letter capitalized (9px, dim, for example "Max", "Plus", "Individual"), then at the right edge the most urgent window's label (10px, dim, for example "5h" or "1mo"), "6% used" (11px, semibold) and an 11px chevron pointing right.
 - **An expanded provider** swaps its chevron to point down, drops the label and percentage from its row, and lists every window beneath, 5px apart. Each window is: its label (11px, muted) with "38% used" (11px, semibold) at the right; a 4px bar with 2px corners on a border-colored track, filled to the share that is used, with a 2px-wide, 8px-tall foreground-colored tick at the share of the window that has passed, where the fill would be at an even pace (shown when the window's start is known, moving right as the window runs); and "Resets in 2h 24m" (10px, dim).
 - **Color means attention.** A reading is foreground-colored with a muted bar until 60% is used, the "working" color from 60% used or once usage is 10 or more points ahead of an even pace through the window (50% used a fifth of the way through), and the "blocked" color from 85% used.
-- **A provider you have never signed in to** has a muted name and "Not signed in" (10px, dim) where the percentage would be. Expanded, it shows one dim 11px line saying which sign-in was not found.
+- **A provider you have never signed in to** has no row. One line beneath the rows (10px, dim) names them: "Not signed in: ChatGPT, GitHub Copilot". They are still checked at every refresh, so a row appears once its sign-in exists.
 - **An expired Claude sign-in** is a pause, not a failure: the last reading stays, with the same line in the dim color, "Stale, 3h old · Paused until Claude Code next runs".
 - **A failed refresh** adds one 9.5px line in the "working" color under the provider: how old the reading is, then why, for example "Stale, 47m old · Rate limited; retry in 8m". A provider that fails with no earlier reading shows the reason alone, at 11px.
 
@@ -73,7 +73,7 @@ Environment overrides: `CLAUDE_CONFIG_DIR`, `CODEX_BIN_PATH`, `GH_BIN_PATH`, `HE
 
 - `herdr-app check mods/quota` passes.
 - `node mods/quota/collect.mjs` exits 0 and prints JSON with `providers`, `errors`, `absent` and `paused`, even on a machine with nothing signed in.
-- The panel shows a row for each chosen provider, with a percentage for every provider that is signed in and "Not signed in" for the rest.
+- The panel shows a row with a percentage for every chosen provider that is signed in, and names the rest on one "Not signed in: …" line.
 - Clicking a row lists its windows and the block grows to fit; clicking again shrinks it back.
 - Clicking refresh shows "Updating…" and then a time.
 - `~/.cache/herdr-quota.json` contains percentages, reset times, plan names and timestamps, and no token.

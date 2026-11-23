@@ -124,15 +124,19 @@ export default class Quota extends View {
     if (block && block.size.px !== px) run("layout.resize", { id: block.id, px });
   }
 
+  // Never signed in, and no earlier reading to show: these get no row.
+  hidden(provider) {
+    return Boolean(this.absent[provider.id]) && !this.windows[provider.id]?.windows?.length;
+  }
+
   provider(t, provider) {
     const data = this.windows[provider.id];
     const error = this.errors[provider.id] || data?.note;
     const windows = Array.isArray(data?.windows) ? data.windows : [];
     // How old a failed refresh left the reading, then why it failed.
     const note = [data?.stale ? staleLabel(data.fetchedAt) : "", error].filter(Boolean).join(" · ");
-    const absent = !windows.length && Boolean(this.absent[provider.id]);
     // An idle Claude Code is not a failure, so its note stays dim.
-    const quiet = absent || Boolean(this.paused[provider.id]);
+    const quiet = Boolean(this.paused[provider.id]);
     const current = urgentWindow(windows);
     const currentUsed = current ? Math.round(current.usedPercent) : null;
     const open = Boolean(this.expanded[provider.id]);
@@ -143,14 +147,13 @@ export default class Quota extends View {
           this.expanded[provider.id] = !this.expanded[provider.id];
           cx.notify();
         })
-        .child(div().flex_none().text_color(absent ? t.muted : t.foreground).font_semibold().child(provider.name))
+        .child(div().flex_none().text_color(t.foreground).font_semibold().child(provider.name))
         .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.dim).child(plan))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(11).font_semibold()
           .text_color(colorFor(t, current, t.foreground)).child(`${currentUsed}% used`)))
-        .when(absent, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("Not signed in")))
         .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(11).flex_none().text_color(t.dim)))
-      .when(!windows.length, (el) => el.when(open || (Boolean(error) && !absent), (inner) => inner
+      .when(!windows.length, (el) => el.when(open || Boolean(error), (inner) => inner
         .child(div().text_size(11).text_color(error && !quiet ? t.working : t.dim)
           .child(error || `${provider.hint} not detected`))))
       .when(open, (el) => el.children(windows.map((window) => {
@@ -173,6 +176,7 @@ export default class Quota extends View {
     const t = theme();
     // The runtime ignores toLocaleTimeString's options, so drop the seconds by hand.
     const updated = this.updatedAt ? new Date(this.updatedAt).toLocaleTimeString().replace(/(\d+:\d+):\d+/, "$1") : null;
+    const hidden = shownProviders().filter((provider) => this.hidden(provider));
     return v_flex().id("quota-panel").size_full().min_h(0).bg(t.chrome).border_t(1).border_color(t.border)
       .text_size(13)
       .child(h_flex().h(41).pl(16).pr(10).pt(14).pb(5).flex_none().items_center().justify_between()
@@ -186,7 +190,9 @@ export default class Quota extends View {
           .child("↻"))))
       .child(v_flex().id("quota-content").flex_1().min_h(0).pl(16).pr(12).pb(10).overflow_y_scrollbar().mode("always")
         .child(v_flex().id("quota-rows").flex_none().gap(12).on_size_change((size) => this.fit(size.height))
-          .children(shownProviders().map((provider) => this.provider(t, provider)))
+          .children(shownProviders().filter((provider) => !this.hidden(provider)).map((provider) => this.provider(t, provider)))
+          .when(hidden.length > 0, (el) => el.child(div().text_size(10).text_color(t.dim)
+            .child(`Not signed in: ${hidden.map((provider) => provider.name).join(", ")}`)))
           .when(Boolean(this.errors.panel), (el) => el.child(div().text_size(10).text_color(t.working).child(this.errors.panel)))));
   }
 }
