@@ -34,6 +34,13 @@ function normalizeWindow(label, usedPercent, resetsAt) {
   return { label, usedPercent: Math.max(0, Math.min(100, usedPercent)), resetsAt: dateMs(resetsAt) };
 }
 
+// A provider that was never set up, as opposed to one that is broken: the panel shows these quietly.
+function absentError(message) {
+  const error = new Error(message);
+  error.absent = true;
+  return error;
+}
+
 function retryAfterMs(response) {
   const header = response.headers.get("retry-after");
   const seconds = Number(header);
@@ -58,7 +65,7 @@ function claudeCredentials() {
 // collectProvider has already turned away an expired sign-in.
 async function claude() {
   const token = (await claudeCredentials())?.claudeAiOauth?.accessToken;
-  if (!token) throw new Error("No Claude Code sign-in found");
+  if (!token) throw absentError("No Claude Code sign-in found");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -123,7 +130,9 @@ async function codexRpc() {
     failWaiting(new Error("Codex app-server timed out"));
     child.kill();
   }, 20000);
-  child.on("error", failWaiting);
+  child.on("error", (error) => failWaiting(error.code === "ENOENT"
+    ? absentError("Codex CLI not found; sign in with ChatGPT in Codex")
+    : error));
   child.stdin.on("error", failWaiting);
   child.on("exit", (code) => {
     if (waiting.size) failWaiting(new Error(`Codex app-server exited (${code ?? "unknown status"})`));
@@ -224,7 +233,7 @@ async function copilot() {
         shell: process.platform === "win32",
       });
     } catch {
-      finish(new Error("GitHub CLI sign-in not found; run gh auth login"));
+      finish(absentError("GitHub CLI sign-in not found; run gh auth login"));
       return;
     }
     child.stdout.setEncoding("utf8");
@@ -237,13 +246,13 @@ async function copilot() {
       }
       output += chunk;
     });
-    child.on("error", () => finish(new Error("GitHub CLI sign-in not found; run gh auth login")));
+    child.on("error", () => finish(absentError("GitHub CLI sign-in not found; run gh auth login")));
     child.on("exit", (code) => {
-      if (code !== 0) finish(new Error("GitHub CLI sign-in not found; run gh auth login"));
+      if (code !== 0) finish(absentError("GitHub CLI sign-in not found; run gh auth login"));
       else finish(null, output.trim());
     });
   });
-  if (!token) throw new Error("GitHub CLI sign-in not found; run gh auth login");
+  if (!token) throw absentError("GitHub CLI sign-in not found; run gh auth login");
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -345,12 +354,9 @@ async function collectProvider(id, load) {
     delete cache.retryAfter[id];
     providers[id] = snapshot;
   } catch (error) {
-    const message = id === "chatgpt" && /ENOENT|not found|not recognized/i.test(String(error.message))
-      ? "Codex CLI not found; sign in with ChatGPT in Codex"
-      : String(error.message || error);
+    const message = String(error.message || error);
     errors[id] = message;
-    // Never set up, as opposed to broken: the panel shows these quietly.
-    if (/CLI not found|sign-in (not )?found/.test(message)) absent[id] = true;
+    if (error.absent) absent[id] = true;
     if (error.retryAfter) cache.retryAfter[id] = error.retryAfter;
     if (oldWindows.length && Number.isFinite(previous?.fetchedAt)) {
       providers[id] = { ...previous, windows: oldWindows, stale: true, note: message };
