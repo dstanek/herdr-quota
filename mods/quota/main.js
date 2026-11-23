@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { checking, exec, layout, props, run, theme } from "herdr";
+import { appHome, checking, exec, layout, run, theme } from "herdr";
 
 const PROVIDERS = [
   { id: "claude", name: "Claude", hint: "Claude Code sign-in" },
@@ -64,13 +64,8 @@ export default class Quota extends View {
   }
 
   refresh(cx) {
-    if (this.busy) return;
-    const collector = props()?.collector;
-    if (!collector) {
-      this.errors = { panel: "Collector is not configured. Reinstall the mod from its repository." };
-      cx.notify();
-      return;
-    }
+    if (this.busy || checking()) return;
+    const collector = `${appHome()}/mods/quota/collect.mjs`;
     this.busy = true;
     cx.notify();
     cx.spawn(async (cx) => {

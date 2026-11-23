@@ -59,7 +59,7 @@ const usage = {
   type: "block",
   size: { px: 220 },
   min: 110,
-  content: { mod: "quota", props: { collector: join(modHome, "collect.mjs") } },
+  content: { mod: "quota" },
 };
 column.children.splice(column.children.indexOf(agents) + 1, 0, usage);
 await writeFile(newLayoutPath, `${JSON.stringify(layout, null, 2)}\n`, { flag: "wx" });

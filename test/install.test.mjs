@@ -46,10 +46,7 @@ test("installer copies the mod and adds Quota beneath Agents in a new layout", a
     const layout = JSON.parse(await readFile(join(appHome, "layouts", "quota-main.json"), "utf8"));
     const lists = layout.children[0].children[0].children;
     assert.deepEqual(lists.map((node) => node.id), ["spaces", "agents", "quota"]);
-    assert.deepEqual(lists[2].content, {
-      mod: "quota",
-      props: { collector: join(appHome, "mods", "quota", "collect.mjs") },
-    });
+    assert.deepEqual(lists[2].content, { mod: "quota" });
     assert.deepEqual(JSON.parse(await readFile(mainPath, "utf8")), mainLayout);
   } finally {
     await rm(appHome, { recursive: true, force: true });
