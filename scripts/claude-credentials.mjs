@@ -1,0 +1,56 @@
+import { readFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { join } from "node:path";
+
+function readKeychain(command) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, ["find-generic-password", "-s", "Claude Code-credentials", "-w"], {
+      stdio: ["ignore", "pipe", "ignore"],
+      windowsHide: true,
+    });
+    let output = "";
+    const timeout = setTimeout(() => child.kill(), 3000);
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      output += chunk;
+      if (output.length > 1024 * 1024) {
+        child.kill();
+        reject(new Error("Claude Keychain item is unexpectedly large"));
+      }
+    });
+    child.once("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once("close", (code) => {
+      clearTimeout(timeout);
+      if (code !== 0) return reject(new Error("Claude Keychain credentials unavailable"));
+      try {
+        resolve(JSON.parse(output.trim()));
+      } catch {
+        reject(new Error("Claude Keychain credentials are not valid JSON"));
+      }
+    });
+  });
+}
+
+export async function readClaudeCredentials({
+  platform = process.platform,
+  configDir,
+  securityCommand = "security",
+} = {}) {
+  if (platform === "darwin") {
+    try {
+      const keychain = await readKeychain(securityCommand);
+      if (keychain?.claudeAiOauth?.accessToken) return keychain;
+    } catch {
+      // Older installs and headless environments may still use the credential file.
+    }
+  }
+
+  try {
+    return JSON.parse(await readFile(join(configDir, ".credentials.json"), "utf8"));
+  } catch {
+    return null;
+  }
+}
