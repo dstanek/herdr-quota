@@ -1,11 +1,24 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { chmod, mkdir, mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readClaudeCredentials } from "../scripts/claude-credentials.mjs";
+
+// Points every provider at nothing, so a test reaches only what it sets up itself.
+function isolatedEnv(directory, overrides = {}) {
+  return {
+    ...process.env,
+    HERDR_USAGE_CACHE: join(directory, "cache.json"),
+    CLAUDE_CONFIG_DIR: join(directory, "claude"),
+    CLAUDE_SECURITY_COMMAND: join(directory, "missing-security"),
+    CODEX_BIN_PATH: join(directory, "missing-codex"),
+    GH_BIN_PATH: join(directory, "missing-gh"),
+    ...overrides,
+  };
+}
 
 test("Claude credentials prefer Keychain on macOS and fall back to the credential file", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-keychain-test-"));
@@ -35,8 +48,8 @@ test("Claude credentials prefer Keychain on macOS and fall back to the credentia
 
 test("collector keeps cached quota visible with its original timestamp during cooldown", async () => {
   const now = Date.now();
-  const cachePath = join(tmpdir(), `herdr-quota-test-${process.pid}.json`);
-  const claudeConfigDir = `${cachePath}.claude`;
+  const directory = await mkdtemp(join(tmpdir(), "herdr-quota-cooldown-test-"));
+  const cachePath = join(directory, "cache.json");
   await writeFile(cachePath, JSON.stringify({
     providers: {
       claude: {
@@ -58,7 +71,7 @@ test("collector keeps cached quota visible with its original timestamp during co
     const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: { ...process.env, HERDR_USAGE_CACHE: cachePath, CLAUDE_CONFIG_DIR: claudeConfigDir },
+      env: isolatedEnv(directory),
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
@@ -68,7 +81,7 @@ test("collector keeps cached quota visible with its original timestamp during co
     assert.match(snapshot.errors.claude, /retry in 5m/);
     assert.doesNotMatch(result.stdout, /accessToken|Bearer/);
   } finally {
-    await unlink(cachePath);
+    await rm(directory, { recursive: true, force: true });
   }
 });
 
@@ -89,12 +102,7 @@ test("expired Claude OAuth credentials suppress usage requests and clear retry c
     const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: {
-        ...process.env,
-        HERDR_USAGE_CACHE: cachePath,
-        CLAUDE_CONFIG_DIR: configDir,
-        CLAUDE_SECURITY_COMMAND: join(dirname(cachePath), "missing-security"),
-      },
+      env: isolatedEnv(directory),
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
@@ -126,14 +134,7 @@ test("missing CLIs are reported against their own provider", async () => {
     const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: {
-        ...process.env,
-        HERDR_USAGE_CACHE: join(directory, "cache.json"),
-        CLAUDE_CONFIG_DIR: join(directory, "claude"),
-        CLAUDE_SECURITY_COMMAND: join(directory, "missing-security"),
-        CODEX_BIN_PATH: join(directory, "missing-codex"),
-        GH_BIN_PATH: join(directory, "missing-gh"),
-      },
+      env: isolatedEnv(directory),
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
@@ -155,14 +156,7 @@ test("Codex exiting mid-conversation fails only the ChatGPT provider", async () 
     const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: {
-        ...process.env,
-        HERDR_USAGE_CACHE: join(directory, "cache.json"),
-        CLAUDE_CONFIG_DIR: join(directory, "claude"),
-        CLAUDE_SECURITY_COMMAND: join(directory, "missing-security"),
-        CODEX_BIN_PATH: codexPath,
-        GH_BIN_PATH: join(directory, "missing-gh"),
-      },
+      env: isolatedEnv(directory, { CODEX_BIN_PATH: codexPath }),
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
@@ -188,14 +182,7 @@ test("malformed cached windows are ignored", async () => {
     const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: {
-        ...process.env,
-        HERDR_USAGE_CACHE: cachePath,
-        CLAUDE_CONFIG_DIR: join(directory, "claude"),
-        CLAUDE_SECURITY_COMMAND: join(directory, "missing-security"),
-        CODEX_BIN_PATH: join(directory, "missing-codex"),
-        GH_BIN_PATH: join(directory, "missing-gh"),
-      },
+      env: isolatedEnv(directory),
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
@@ -220,14 +207,7 @@ sleep 1
     const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: {
-        ...process.env,
-        HERDR_USAGE_CACHE: join(directory, "cache.json"),
-        CLAUDE_CONFIG_DIR: join(directory, "claude"),
-        CLAUDE_SECURITY_COMMAND: join(directory, "missing-security"),
-        CODEX_BIN_PATH: codexPath,
-        GH_BIN_PATH: join(directory, "missing-gh"),
-      },
+      env: isolatedEnv(directory, { CODEX_BIN_PATH: codexPath }),
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
@@ -265,7 +245,7 @@ test("Copilot parses finite quota snapshots using gh auth without caching creden
     const result = spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: { ...process.env, HERDR_USAGE_CACHE: cachePath, GH_BIN_PATH: ghPath },
+      env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
@@ -292,7 +272,7 @@ test("Copilot rejects oversized gh token output without exposing it", async () =
     const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: { ...process.env, HERDR_USAGE_CACHE: cachePath, GH_BIN_PATH: ghPath },
+      env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
@@ -313,7 +293,7 @@ test("Copilot times out a hung gh token command with a safe error", async () => 
     const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: { ...process.env, HERDR_USAGE_CACHE: cachePath, GH_BIN_PATH: ghPath },
+      env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
       timeout: 10000,
     });
     assert.equal(result.status, 0, result.stderr);

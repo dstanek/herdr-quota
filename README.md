@@ -111,9 +111,4 @@ herdr-app check mods/quota
 
 `node --check` only looks at the first file it is given, hence the loop.
 
-Most of the collector tests are not isolated from your machine: a plain `node --test` reads your real Claude credentials, starts the real `codex` and `gh`, and calls the live usage endpoints, so results can depend on your sign-in state. To keep a run local, point the providers at paths that do not exist:
-
-```sh
-CLAUDE_SECURITY_COMMAND=/nonexistent CLAUDE_CONFIG_DIR=/nonexistent \
-  CODEX_BIN_PATH=/nonexistent GH_BIN_PATH=/nonexistent node --test
-```
+The tests never touch your real sign-ins: each one points the collector at stand-in CLIs, credentials, and responses in a temporary directory.
