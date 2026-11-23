@@ -23,8 +23,8 @@ const mainLayout = {
   }],
 };
 
-function install(appHome) {
-  return spawnSync(process.execPath, ["scripts/install.mjs"], {
+function install(appHome, ...args) {
+  return spawnSync(process.execPath, ["scripts/install.mjs", ...args], {
     cwd: dirname(dirname(fileURLToPath(import.meta.url))),
     encoding: "utf8",
     env: { ...process.env, HERDR_APP_HOME: appHome },
@@ -114,6 +114,32 @@ test("installer refuses to overwrite an existing install", async () => {
     assert.notEqual(again.status, 0);
     assert.match(again.stderr, /^Refusing to overwrite existing mod at .*\n$/);
     assert.equal(await readFile(layoutPath, "utf8"), before);
+  } finally {
+    await rm(appHome, { recursive: true, force: true });
+  }
+});
+
+test("--upgrade replaces the mod files and leaves the layout alone", async () => {
+  const appHome = await mkdtemp(join(tmpdir(), "herdr-install-upgrade-test-"));
+  const mainPath = join(appHome, "layouts", "main.json");
+  const layoutPath = join(appHome, "layouts", "quota-main.json");
+  const collectorPath = join(appHome, "mods", "quota", "collect.mjs");
+  await mkdir(dirname(mainPath));
+  await writeFile(mainPath, JSON.stringify(mainLayout));
+  try {
+    const missing = install(appHome, "--upgrade");
+    assert.notEqual(missing.status, 0);
+    assert.match(missing.stderr, /^Nothing to upgrade/);
+    assert.equal(install(appHome).status, 0);
+    await writeFile(collectorPath, "old");
+    await writeFile(layoutPath, "edited by hand");
+    const result = install(appHome, "--upgrade");
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      await readFile(collectorPath, "utf8"),
+      await readFile(new URL("../scripts/collect.mjs", import.meta.url), "utf8"),
+    );
+    assert.equal(await readFile(layoutPath, "utf8"), "edited by hand");
   } finally {
     await rm(appHome, { recursive: true, force: true });
   }

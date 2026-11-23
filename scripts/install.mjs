@@ -15,10 +15,30 @@ function fail(message) {
   process.exit(1);
 }
 
+async function copyMod() {
+  await cp(join(root, "mods", "quota"), modHome, { recursive: true });
+  await cp(join(root, "scripts", "collect.mjs"), join(modHome, "collect.mjs"));
+  await cp(join(root, "scripts", "claude-credentials.mjs"), join(modHome, "claude-credentials.mjs"));
+}
+
+const mode = process.argv[2];
+if (mode === "--upgrade") {
+  try {
+    await access(modHome);
+  } catch {
+    fail(`Nothing to upgrade at ${modHome}. Run without --upgrade to install.`);
+  }
+  await copyMod();
+  console.log(`Upgraded the quota mod at ${modHome}. Layouts were left as they are.`);
+  process.exit(0);
+} else if (mode) {
+  fail("Usage: node scripts/install.mjs [--upgrade]");
+}
+
 await mkdir(dirname(modHome), { recursive: true });
 try {
   await access(modHome);
-  fail(`Refusing to overwrite existing mod at ${modHome}`);
+  fail(`Refusing to overwrite existing mod at ${modHome}. Use --upgrade to update it.`);
 } catch (error) {
   if (error.code !== "ENOENT") throw error;
 }
@@ -51,9 +71,7 @@ const agents = column?.children.find((child) => child?.id === "agents");
 if (!agents || !agents.content) fail("The main layout does not contain the expected Agents block");
 if (column.type !== "column") fail("The Agents block is not in a column, so Quota cannot be placed beneath it");
 
-await cp(join(root, "mods", "quota"), modHome, { recursive: true });
-await cp(join(root, "scripts", "collect.mjs"), join(modHome, "collect.mjs"));
-await cp(join(root, "scripts", "claude-credentials.mjs"), join(modHome, "claude-credentials.mjs"));
+await copyMod();
 const usage = {
   id: "quota",
   type: "block",

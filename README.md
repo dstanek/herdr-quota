@@ -30,17 +30,19 @@ Then switch Herdr to the generated layout:
 herdr-app do layout.switch '{"name":"quota-main"}'
 ```
 
-The installer copies the mod and its collector to Herdr's mods folder and creates a new `quota-main` layout based on your existing `main` layout, placing Quota beneath Agents. It does not replace your existing layout or overwrite an existing Quota mod/layout. If either already exists, choose a different name or remove/rename that item before installing.
+The installer copies the mod and its collector to Herdr's mods folder and creates a new `quota-main` layout based on your existing `main` layout, placing Quota beneath Agents. It does not replace your existing layout or overwrite an existing Quota mod/layout. If the mod already exists, use `--upgrade` (below); if only the layout exists, remove or rename it before installing.
 
 The default Herdr config directory is `~/.config/herdr-app`. If Herdr uses a custom directory, set `HERDR_APP_HOME` to that directory when running the installer.
 
 ### Upgrade
 
-The installer will not overwrite an existing install. To update one, copy the new files over it from the project directory; Herdr reloads the mod when they change, and your layout is left as it is:
+A plain install will not overwrite an existing one. To update the installed mod from the project directory, run:
 
 ```sh
-cp mods/quota/main.js scripts/collect.mjs scripts/claude-credentials.mjs ~/.config/herdr-app/mods/quota/
+node scripts/install.mjs --upgrade
 ```
+
+This replaces the mod's files and leaves your layouts as they are; Herdr reloads the mod when the files change.
 
 ### Uninstall
 
