@@ -26,10 +26,12 @@ function resetLabel(value) {
   return `Resets in ${remaining}`;
 }
 
-// Color only when quota is running low; a healthy reading stays neutral.
-function colorFor(t, percent, healthy) {
-  if (percent >= 85) return t.blocked;
-  if (percent >= 60) return t.working;
+// Color only when quota is running low or going faster than an even pace; a healthy reading stays neutral.
+function colorFor(t, window, healthy) {
+  const used = Number(window.usedPercent) || 0;
+  if (used >= 85) return t.blocked;
+  const pace = paceMark(window);
+  if (used >= 60 || (pace !== null && used - (100 - pace) >= 10)) return t.working;
   return healthy;
 }
 
@@ -134,7 +136,7 @@ export default class Quota extends View {
         .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.dim).child(plan))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(11).font_semibold()
-          .text_color(colorFor(t, current.usedPercent, t.foreground)).child(`${currentRemaining}% left`)))
+          .text_color(colorFor(t, current, t.foreground)).child(`${currentRemaining}% left`)))
         .when(absent, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("Not signed in")))
         .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(11).flex_none().text_color(t.dim)))
       .when(!windows.length, (el) => el.when(open || (Boolean(error) && !absent), (inner) => inner
@@ -147,9 +149,9 @@ export default class Quota extends View {
         return v_flex().gap(4)
           .child(h_flex().items_center().justify_between()
             .child(div().text_size(11).text_color(t.muted).child(window.label))
-          .child(div().text_size(11).font_semibold().text_color(colorFor(t, used, t.foreground)).child(`${Math.round(remaining)}% left`)))
+          .child(div().text_size(11).font_semibold().text_color(colorFor(t, window, t.foreground)).child(`${Math.round(remaining)}% left`)))
           .child(div().relative().h(4).w_full().rounded(2).bg(t.border)
-            .child(div().h_full().rounded(2).bg(colorFor(t, used, t.muted)).w(`${remaining}%`))
+            .child(div().h_full().rounded(2).bg(colorFor(t, window, t.muted)).w(`${remaining}%`))
             .when(pace !== null, (el) => el.child(div().absolute().top(-2).left(`${pace}%`).ml(-1).w(2).h(8).bg(t.foreground))))
           .child(div().text_size(10).text_color(t.dim).child(resetLabel(window.resetsAt)));
       })))
