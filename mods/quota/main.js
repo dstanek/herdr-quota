@@ -1,6 +1,6 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { exec, props, theme } from "herdr";
+import { checking, exec, layout, props, run, theme } from "herdr";
 
 const PROVIDERS = [
   { id: "claude", name: "Claude", hint: "Claude Code sign-in" },
@@ -37,6 +37,16 @@ function staleLabel(timestamp) {
 function currentWindow(windows) {
   return windows.find((window) => /^(5h|5-hour|session)$/i.test(window.label))
     || windows[0];
+}
+
+// The layout block showing this mod, when a column gives it a fixed height.
+function fixedBlock(node, parent) {
+  if (node?.content?.mod === "quota") return parent?.type === "column" && node.size?.px ? node : null;
+  for (const child of node?.children || []) {
+    const found = fixedBlock(child, node);
+    if (found) return found;
+  }
+  return null;
 }
 
 export default class Quota extends View {
@@ -79,6 +89,14 @@ export default class Quota extends View {
         cx.notify();
       }
     });
+  }
+
+  // Keeps the block as tall as its rows, so nothing is cut off or left empty.
+  fit(height) {
+    if (checking()) return;
+    const block = fixedBlock(layout());
+    const px = Math.ceil(41 + height + 10);
+    if (block && block.size.px !== px) run("layout.resize", { id: block.id, px });
   }
 
   provider(t, provider) {
@@ -136,8 +154,9 @@ export default class Quota extends View {
           .tooltip("Refresh usage")
           .on_click((_event, cx) => this.refresh(cx))
           .child("↻"))))
-      .child(v_flex().id("usage-content").flex_1().min_h(0).pl(16).pr(12).pb(10).gap(12).overflow_y_scrollbar().mode("always")
-        .children(PROVIDERS.map((provider) => this.provider(t, provider)))
-        .when(Boolean(this.errors.panel), (el) => el.child(div().text_size(10).text_color(t.working).child(this.errors.panel))));
+      .child(v_flex().id("usage-content").flex_1().min_h(0).pl(16).pr(12).pb(10).overflow_y_scrollbar().mode("always")
+        .child(v_flex().id("usage-rows").flex_none().gap(12).on_size_change((size) => this.fit(size.height))
+          .children(PROVIDERS.map((provider) => this.provider(t, provider)))
+          .when(Boolean(this.errors.panel), (el) => el.child(div().text_size(10).text_color(t.working).child(this.errors.panel)))));
   }
 }
