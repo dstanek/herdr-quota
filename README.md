@@ -54,7 +54,7 @@ node scripts/install.mjs --upgrade
 
 This replaces the mod's files and leaves your layouts as they are; Herdr reloads the mod when the files change.
 
-An upgrade adds and replaces files but never deletes any, so a file dropped from a later version stays in the installed folder. For an exact copy, uninstall and install again.
+An upgrade adds and replaces files but never deletes any, so a file dropped from a later version stays in the installed folder. For an exact copy, uninstall and install again; that also recreates the `quota-main` layout, so any edits you made to it are lost.
 
 ### Uninstall
 
