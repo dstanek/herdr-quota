@@ -291,6 +291,25 @@ test("Codex exiting mid-conversation fails only the ChatGPT provider", async () 
   }
 });
 
+test("a cache file that is not an object is replaced", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-quota-badcache-test-"));
+  const cachePath = join(directory, "cache.json");
+  try {
+    for (const contents of ['"x"', "7", "[1]", "null", "not json"]) {
+      await writeFile(cachePath, contents);
+      const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+        cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+        encoding: "utf8",
+        env: isolatedEnv(directory),
+      });
+      assert.equal(result.status, 0, `${contents}: ${result.stderr}`);
+      assert.deepEqual(JSON.parse(await readFile(cachePath, "utf8")), { providers: {}, retryAfter: {} });
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("malformed cached windows are ignored", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-quota-cache-test-"));
   const cachePath = join(directory, "cache.json");

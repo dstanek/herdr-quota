@@ -10,7 +10,8 @@ const absent = {};
 const providers = {};
 const cachePath = process.env.HERDR_USAGE_CACHE
   || join(process.env.XDG_CACHE_HOME || join(home, ".cache"), "herdr-usage.json");
-const cache = await readJson(cachePath) || { providers: {}, retryAfter: {} };
+const cached = await readJson(cachePath);
+const cache = cached && typeof cached === "object" && !Array.isArray(cached) ? cached : {};
 if (!cache.providers || typeof cache.providers !== "object") cache.providers = {};
 if (!cache.retryAfter || typeof cache.retryAfter !== "object") cache.retryAfter = {};
 
