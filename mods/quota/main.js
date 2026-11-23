@@ -1,12 +1,19 @@
 import { View, div, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { appHome, checking, exec, layout, run, theme } from "herdr";
+import { appHome, checking, exec, layout, props, run, theme } from "herdr";
 
 const PROVIDERS = [
   { id: "claude", name: "Claude", hint: "Claude Code sign-in" },
   { id: "chatgpt", name: "ChatGPT", hint: "Codex sign-in" },
   { id: "copilot", name: "GitHub Copilot", hint: "GitHub CLI sign-in (experimental)" },
 ];
+
+// The layout block's `providers` prop picks and orders the rows; without it, all of them.
+function shownProviders() {
+  const wanted = props()?.providers;
+  if (!Array.isArray(wanted) || !wanted.length) return PROVIDERS;
+  return wanted.map((id) => PROVIDERS.find((provider) => provider.id === id)).filter(Boolean);
+}
 
 function resetLabel(value) {
   if (!value) return "Reset time unavailable";
@@ -70,7 +77,8 @@ export default class Quota extends View {
     cx.notify();
     cx.spawn(async (cx) => {
       try {
-        const result = await exec("node", [collector], { timeout: 25000 });
+        const only = shownProviders().length < PROVIDERS.length ? shownProviders().map((provider) => provider.id) : [];
+        const result = await exec("node", [collector, ...only], { timeout: 25000 });
         if (result.code !== 0) throw new Error("Quota collector failed");
         const snapshot = JSON.parse(result.stdout);
         this.windows = snapshot.providers || {};
@@ -155,7 +163,7 @@ export default class Quota extends View {
           .child("↻"))))
       .child(v_flex().id("quota-content").flex_1().min_h(0).pl(16).pr(12).pb(10).overflow_y_scrollbar().mode("always")
         .child(v_flex().id("quota-rows").flex_none().gap(12).on_size_change((size) => this.fit(size.height))
-          .children(PROVIDERS.map((provider) => this.provider(t, provider)))
+          .children(shownProviders().map((provider) => this.provider(t, provider)))
           .when(Boolean(this.errors.panel), (el) => el.child(div().text_size(10).text_color(t.working).child(this.errors.panel)))));
   }
 }

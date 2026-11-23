@@ -368,11 +368,12 @@ async function collectProvider(id, load) {
   }
 }
 
-await Promise.all([
-  collectProvider("claude", claude),
-  collectProvider("chatgpt", codex),
-  collectProvider("copilot", copilot),
-]);
+// Provider ids as arguments limit the run to those providers; none means all of them.
+const loaders = { claude, chatgpt: codex, copilot };
+const wanted = process.argv.slice(2);
+await Promise.all(Object.entries(loaders)
+  .filter(([id]) => !wanted.length || wanted.includes(id))
+  .map(([id, load]) => collectProvider(id, load)));
 try {
   await persistCache();
 } catch {

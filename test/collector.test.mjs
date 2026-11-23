@@ -527,6 +527,21 @@ test("a Copilot rate limit starts a cooldown that skips the next request", async
   }
 });
 
+test("provider ids given as arguments limit the run to those providers", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-quota-only-test-"));
+  try {
+    const result = spawnSync(process.execPath, ["scripts/collect.mjs", "copilot", "claude"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: isolatedEnv(directory),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(Object.keys(JSON.parse(result.stdout).errors).sort(), ["claude", "copilot"]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("Copilot rejects oversized gh token output without exposing it", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-output-test-"));
   const cachePath = join(directory, "cache.json");

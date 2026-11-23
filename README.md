@@ -89,7 +89,7 @@ If Claude or Copilot rate-limits requests, the collector backs off for the inter
 
 ## Configuration and scope
 
-The panel itself has no settings. The collector reads a few environment variables, which must be set in the environment Herdr starts with:
+The collector reads a few environment variables, which must be set in the environment Herdr starts with:
 
 | Variable | Effect | Default |
 |---|---|---|
@@ -99,7 +99,15 @@ The panel itself has no settings. The collector reads a few environment variable
 | `HERDR_QUOTA_CACHE` | Cache file location | `~/.cache/herdr-quota.json` |
 | `CLAUDE_SECURITY_COMMAND` | macOS Keychain command; exists for the tests | `security` |
 
-The panel always lists all three providers and reads each one's existing local sign-in, so there is no provider setup file to maintain. A provider you have never signed in to stays in the list, dimmed and marked "Not signed in"; it cannot be hidden. The five-minute refresh interval is fixed, and providers always start collapsed.
+By default the panel lists all three providers and reads each one's existing local sign-in, so there is nothing to set up. A provider you have never signed in to stays in the list, dimmed and marked "Not signed in".
+
+To show only some providers, or to reorder them, add a `providers` list to the Quota block in your layout (`~/.config/herdr-app/layouts/quota-main.json`). The ids are `claude`, `chatgpt`, and `copilot`; providers left out are not queried at all:
+
+```json
+"content": { "mod": "quota", "props": { "providers": ["claude", "chatgpt"] } }
+```
+
+The five-minute refresh interval is fixed, and providers always start collapsed.
 
 This is a Herdr desktop mod; the separate Herdr mobile app does not currently run desktop mods.
 
