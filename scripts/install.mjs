@@ -31,19 +31,19 @@ try {
   if (error.code !== "ENOENT") throw error;
 }
 
-function findNode(node, id) {
-  if (node?.id === id) return node;
+function findParent(node, id) {
   for (const child of node?.children || []) {
-    const found = findNode(child, id);
+    if (child?.id === id) return node;
+    const found = findParent(child, id);
     if (found) return found;
   }
   return null;
 }
 
-const agents = findNode(layout, "agents");
+const column = findParent(layout, "agents");
+const agents = column?.children.find((child) => child?.id === "agents");
 if (!agents || !agents.content) throw new Error("The main layout does not contain the expected Agents block");
-const sidebarLists = findNode(layout, "sidebar-lists") || findNode(layout, "sidebar");
-if (!sidebarLists || !Array.isArray(sidebarLists.children)) throw new Error("Could not locate the sidebar layout column");
+if (column.type !== "column") throw new Error("The Agents block is not in a column, so Quota cannot be placed beneath it");
 
 await cp(join(root, "mods", "quota"), modHome, { recursive: true });
 await cp(join(root, "scripts", "collect.mjs"), join(modHome, "collect.mjs"));
@@ -55,7 +55,7 @@ const usage = {
   min: 110,
   content: { mod: "quota", props: { collector: join(modHome, "collect.mjs") } },
 };
-sidebarLists.children.splice(sidebarLists.children.indexOf(agents) + 1, 0, usage);
+column.children.splice(column.children.indexOf(agents) + 1, 0, usage);
 await writeFile(newLayoutPath, `${JSON.stringify(layout, null, 2)}\n`, { flag: "wx" });
 console.log(`Installed the quota mod at ${modHome}`);
 console.log(`Created ${newLayoutPath}. Switch to it with: herdr-app do layout.switch '{"name":"quota-main"}'`);

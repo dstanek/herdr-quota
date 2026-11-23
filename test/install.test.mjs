@@ -56,6 +56,54 @@ test("installer copies the mod and adds Quota beneath Agents in a new layout", a
   }
 });
 
+test("installer places Quota beneath Agents wherever the Agents block sits", async () => {
+  const appHome = await mkdtemp(join(tmpdir(), "herdr-install-nested-test-"));
+  const mainPath = join(appHome, "layouts", "main.json");
+  await mkdir(dirname(mainPath));
+  await writeFile(mainPath, JSON.stringify({
+    id: "root",
+    type: "row",
+    children: [{
+      id: "sidebar",
+      type: "column",
+      children: [
+        { id: "brand", type: "block", content: { mod: "workspace-chrome" } },
+        { id: "lists", type: "column", children: [{ id: "agents", type: "block", content: { mod: "agents" } }] },
+      ],
+    }],
+  }));
+  try {
+    const result = install(appHome);
+    assert.equal(result.status, 0, result.stderr);
+    const layout = JSON.parse(await readFile(join(appHome, "layouts", "quota-main.json"), "utf8"));
+    const [brand, lists] = layout.children[0].children;
+    assert.equal(brand.id, "brand");
+    assert.deepEqual(lists.children.map((node) => node.id), ["agents", "quota"]);
+  } finally {
+    await rm(appHome, { recursive: true, force: true });
+  }
+});
+
+test("installer refuses a layout whose Agents block is not in a column", async () => {
+  const appHome = await mkdtemp(join(tmpdir(), "herdr-install-row-test-"));
+  const mainPath = join(appHome, "layouts", "main.json");
+  await mkdir(dirname(mainPath));
+  await writeFile(mainPath, JSON.stringify({
+    id: "root",
+    type: "row",
+    children: [{ id: "agents", type: "block", content: { mod: "agents" } }],
+  }));
+  try {
+    const result = install(appHome);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /not in a column/);
+    assert.deepEqual(await readdir(join(appHome, "mods")), []);
+    assert.deepEqual(await readdir(join(appHome, "layouts")), ["main.json"]);
+  } finally {
+    await rm(appHome, { recursive: true, force: true });
+  }
+});
+
 test("installer refuses to overwrite an existing install", async () => {
   const appHome = await mkdtemp(join(tmpdir(), "herdr-install-again-test-"));
   const mainPath = join(appHome, "layouts", "main.json");
