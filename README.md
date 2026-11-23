@@ -98,7 +98,7 @@ If Claude or Copilot rate-limits requests, the collector backs off for the inter
 Each bar in the expanded details has a small vertical mark. The bar's fill is how much of the quota you have used; the mark is how much of the window's time has passed. If you used quota at a perfectly even rate, the fill would end exactly at the mark.
 
 - **Fill short of the mark:** you are using quota more slowly than the window allows and will not run out at this rate.
-- **Fill past the mark:** you are ahead of pace. Halfway through a 5-hour window with 70% used, the mark sits at 50% and the fill runs 20 points beyond it.
+- **Fill past the mark:** you are ahead of pace. Halfway through a 5-hour window with 70% used, the mark sits at 50% and the fill runs 20 points beyond it. The line beneath the bar says so in words: "Resets in 2h 30m · 20% ahead of pace".
 
 The mark moves right as the window runs, so a reading that was ahead of pace can fall back behind it without any quota being returned.
 

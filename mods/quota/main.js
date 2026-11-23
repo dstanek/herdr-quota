@@ -83,6 +83,11 @@ function aheadOfPace(window) {
   return pace !== null && used >= 20 && used - pace >= 10;
 }
 
+// The same thing in words, for the expanded view. Nothing when on or under pace: that needs no announcing.
+function paceLabel(window) {
+  return aheadOfPace(window) ? `${Math.round(window.usedPercent - paceMark(window))}% ahead of pace` : "";
+}
+
 // The window that most needs attention: one nearly used up, then one ahead of pace, then the most used.
 function urgentWindow(windows) {
   const rank = (window) => (window.usedPercent >= 85 ? 2 : aheadOfPace(window) ? 1 : 0);
@@ -232,7 +237,7 @@ export default class Quota extends View {
           .child(div().relative().h(4).w_full().rounded(2).bg(t.border)
             .child(div().h_full().rounded(2).bg(colorFor(t, window, t.muted)).w(`${used}%`))
             .when(pace !== null, (el) => el.child(div().absolute().top(-2).left(`${pace}%`).ml(-1).w(2).h(8).bg(t.foreground))))
-          .child(div().text_size(10).text_color(t.dim).child(resetLabel(window.resetsAt)));
+          .child(div().text_size(10).text_color(t.dim).child([resetLabel(window.resetsAt), paceLabel(window)].filter(Boolean).join(" · ")));
       })))
       .when(Boolean(note) && windows.length > 0, (el) => el.child(div().text_size(9.5)
         .text_color(quiet ? t.dim : t.working).child(note)));
