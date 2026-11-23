@@ -31,7 +31,7 @@ function colorFor(t, window, healthy) {
   const used = Number(window.usedPercent) || 0;
   if (used >= 85) return t.blocked;
   const pace = paceMark(window);
-  if (used >= 60 || (pace !== null && used - (100 - pace) >= 10)) return t.working;
+  if (used >= 60 || (pace !== null && used - pace >= 10)) return t.working;
   return healthy;
 }
 
@@ -43,12 +43,11 @@ function staleLabel(timestamp) {
   return `Stale, ${age} old`;
 }
 
-// Where the bar would end if the window had been used at an even pace since it opened.
+// How much would be used by now at an even pace through the window: the share of it that has passed.
 function paceMark(window) {
   const length = window.resetsAt - window.startsAt;
   if (!(length > 0)) return null;
-  const elapsed = (Date.now() - window.startsAt) / length;
-  return Math.max(0, Math.min(100, (1 - elapsed) * 100));
+  return Math.max(0, Math.min(100, (Date.now() - window.startsAt) / length * 100));
 }
 
 function currentWindow(windows) {
@@ -123,7 +122,7 @@ export default class Quota extends View {
     const note = [data?.stale ? staleLabel(data.fetchedAt) : "", error].filter(Boolean).join(" · ");
     const absent = !windows.length && Boolean(this.absent[provider.id]);
     const current = currentWindow(windows);
-    const currentRemaining = current ? Math.round(100 - current.usedPercent) : null;
+    const currentUsed = current ? Math.round(current.usedPercent) : null;
     const open = Boolean(this.expanded[provider.id]);
     const plan = typeof data?.plan === "string" ? data.plan.charAt(0).toUpperCase() + data.plan.slice(1) : "";
     return v_flex().gap(5)
@@ -136,7 +135,7 @@ export default class Quota extends View {
         .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.dim).child(plan))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(11).font_semibold()
-          .text_color(colorFor(t, current, t.foreground)).child(`${currentRemaining}% left`)))
+          .text_color(colorFor(t, current, t.foreground)).child(`${currentUsed}% used`)))
         .when(absent, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child("Not signed in")))
         .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(11).flex_none().text_color(t.dim)))
       .when(!windows.length, (el) => el.when(open || (Boolean(error) && !absent), (inner) => inner
@@ -144,14 +143,13 @@ export default class Quota extends View {
           .child(error || `${provider.hint} not detected`))))
       .when(open, (el) => el.children(windows.map((window) => {
         const used = Math.max(0, Math.min(100, Number(window.usedPercent) || 0));
-        const remaining = 100 - used;
         const pace = paceMark(window);
         return v_flex().gap(4)
           .child(h_flex().items_center().justify_between()
             .child(div().text_size(11).text_color(t.muted).child(window.label))
-          .child(div().text_size(11).font_semibold().text_color(colorFor(t, window, t.foreground)).child(`${Math.round(remaining)}% left`)))
+          .child(div().text_size(11).font_semibold().text_color(colorFor(t, window, t.foreground)).child(`${Math.round(used)}% used`)))
           .child(div().relative().h(4).w_full().rounded(2).bg(t.border)
-            .child(div().h_full().rounded(2).bg(colorFor(t, window, t.muted)).w(`${remaining}%`))
+            .child(div().h_full().rounded(2).bg(colorFor(t, window, t.muted)).w(`${used}%`))
             .when(pace !== null, (el) => el.child(div().absolute().top(-2).left(`${pace}%`).ml(-1).w(2).h(8).bg(t.foreground))))
           .child(div().text_size(10).text_color(t.dim).child(resetLabel(window.resetsAt)));
       })))

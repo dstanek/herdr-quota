@@ -2,7 +2,7 @@
 
 A native Herdr **desktop** sidebar panel for checking remaining subscription usage for Claude Code, ChatGPT, and (experimentally) GitHub Copilot.
 
-The panel starts compact: each provider shows its current short-term window and remaining percentage. Click a provider to expand its other quota windows, percentages, and reset times.
+The panel starts compact: each provider shows its current short-term window and the percentage used. Click a provider to expand its other quota windows, percentages, and reset times.
 
 <img src="preview.png" alt="The Quota panel with Claude expanded, ChatGPT collapsed, and Copilot not signed in (sample data)" width="270">
 
@@ -78,7 +78,7 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 
 - Short-term and weekly windows when reported by the provider. Each is named by its period, then what it is scoped to: `5h`, `7d`, `7d Opus`. Copilot's monthly premium-request allowance is `1mo`.
 - The plan each provider reports (for example Max, Plus, Individual), dimmed beside its name.
-- Remaining quota, reset countdown, and a bar of what is left in expanded details. A tick on the bar marks where an even pace through the window would put you: a bar that stops short of the tick is using quota faster than the window allows. Readings turn amber at 40% left or when usage is 10 or more points ahead of that even pace, and red at 15% left.
+- Quota used, reset countdown, and a bar of what is used in expanded details. A tick on the bar marks how much of the window has passed, which is where an even pace would put you: a bar that runs past the tick is using quota faster than the window allows. Readings turn amber at 60% used or when usage is 10 or more points ahead of that even pace, and red at 85% used.
 - If a refresh fails, the cached reading is marked "Stale" with its age and the reason.
 - Only provider-reported values. Expired windows are hidden.
 - The panel grows and shrinks to fit its rows when it sits in a fixed-height sidebar block, as the installer places it.
