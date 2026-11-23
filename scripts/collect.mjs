@@ -282,7 +282,9 @@ async function copilot() {
     if (!snapshots || typeof snapshots !== "object" || Array.isArray(snapshots)) {
       throw new Error("No Copilot quota snapshots returned");
     }
-    const labels = { premium_interactions: "Premium", chat: "Chat", completions: "Completions" };
+    // Named like the other providers' windows: the period, then what it is scoped to.
+    // Premium requests are the allowance paid plans meter, so they go unscoped.
+    const labels = { premium_interactions: "1mo", chat: "1mo Chat", completions: "1mo Completions" };
     const windows = [];
     for (const [key, item] of Object.entries(snapshots)) {
       if (!item || typeof item !== "object" || item.unlimited === true) continue;
@@ -296,7 +298,7 @@ async function copilot() {
         remainingPercent = item.remaining / item.entitlement * 100;
       } else continue;
       const resetsAt = item.quota_reset_at || body.quota_reset_date_utc || body.quota_reset_date;
-      const window = normalizeWindow(labels[key] || key.replaceAll("_", " "), 100 - remainingPercent, resetsAt);
+      const window = normalizeWindow(labels[key] || `1mo ${key.replaceAll("_", " ")}`, 100 - remainingPercent, resetsAt);
       if (window) windows.push(window);
     }
     if (!windows.length) throw new Error("No finite Copilot quota windows returned");

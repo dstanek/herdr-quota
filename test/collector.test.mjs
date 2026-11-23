@@ -486,9 +486,9 @@ test("Copilot parses finite quota snapshots using gh auth without caching creden
     assert.equal(snapshot.providers.copilot.plan, "individual");
     assert.deepEqual(snapshot.providers.copilot.windows.map(({ label, usedPercent, resetsAt }) =>
       ({ label, usedPercent, resetsAt })), [
-      { label: "Premium", usedPercent: 25, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
-      { label: "Chat", usedPercent: 75, resetsAt: 1900000000000 },
-      { label: "future bucket", usedPercent: 75, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
+      { label: "1mo", usedPercent: 25, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
+      { label: "1mo Chat", usedPercent: 75, resetsAt: 1900000000000 },
+      { label: "1mo future bucket", usedPercent: 75, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
     ]);
     const cache = await readFile(cachePath, "utf8");
     assert.doesNotMatch(cache, /test-copilot-token|Bearer/);
