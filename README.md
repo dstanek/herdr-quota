@@ -112,7 +112,7 @@ This is a Herdr desktop mod; the separate Herdr mobile app does not currently ru
 ## Development checks
 
 ```sh
-for f in scripts/*.mjs; do node --check "$f"; done
+for f in scripts/*.mjs mods/quota/*.mjs; do node --check "$f"; done
 node --test
 herdr-app check mods/quota
 ```

@@ -18,8 +18,6 @@ function fail(message) {
 
 async function copyMod() {
   await cp(join(root, "mods", "quota"), modHome, { recursive: true });
-  await cp(join(root, "scripts", "collect.mjs"), join(modHome, "collect.mjs"));
-  await cp(join(root, "scripts", "claude-credentials.mjs"), join(modHome, "claude-credentials.mjs"));
 }
 
 async function exists(path) {

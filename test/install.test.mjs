@@ -138,7 +138,7 @@ test("--upgrade replaces the mod files and leaves the layout alone", async () =>
     assert.equal(result.status, 0, result.stderr);
     assert.equal(
       await readFile(collectorPath, "utf8"),
-      await readFile(new URL("../scripts/collect.mjs", import.meta.url), "utf8"),
+      await readFile(new URL("../mods/quota/collect.mjs", import.meta.url), "utf8"),
     );
     assert.equal(await readFile(layoutPath, "utf8"), "edited by hand");
   } finally {

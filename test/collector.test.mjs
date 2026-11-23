@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { readClaudeCredentials } from "../scripts/claude-credentials.mjs";
+import { readClaudeCredentials } from "../mods/quota/claude-credentials.mjs";
 
 // Points every provider at nothing, so a test reaches only what it sets up itself.
 function isolatedEnv(directory, overrides = {}) {
@@ -68,7 +68,7 @@ test("collector keeps cached quota visible with its original timestamp during co
     retryAfter: { claude: now + 5 * 60_000, chatgpt: now + 5 * 60_000 },
   }));
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory),
@@ -103,7 +103,7 @@ test("expired Claude OAuth credentials suppress usage requests and clear retry c
   await writeFile(keychain, "#!/bin/sh\nexit 44\n");
   await chmod(keychain, 0o755);
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { CLAUDE_SECURITY_COMMAND: keychain }),
@@ -151,7 +151,7 @@ test("Claude parses session, weekly, and per-model windows from either response 
           return new Response(${JSON.stringify(JSON.stringify(body))});
         };
       `);
-      const result = spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
+      const result = spawnSync(process.execPath, ["--import", preloadPath, "mods/quota/collect.mjs"], {
         cwd: dirname(dirname(fileURLToPath(import.meta.url))),
         encoding: "utf8",
         env: isolatedEnv(directory, { HERDR_QUOTA_CACHE: join(directory, `${shape}.json`) }),
@@ -182,7 +182,7 @@ test("collector starts Codex with a fixed app-server argv", async () => {
   await writeFile(codexPath, `#!/bin/sh\nprintf '%s\\n' "$@" > '${argvPath}'\n`);
   await chmod(codexPath, 0o755);
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { CODEX_BIN_PATH: codexPath }),
@@ -205,7 +205,7 @@ test("a failed Keychain read is not reported as an expired sign-in", { skip: pro
   await writeFile(keychain, "#!/bin/sh\nexit 1\n");
   await chmod(keychain, 0o755);
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { CLAUDE_SECURITY_COMMAND: keychain }),
@@ -231,7 +231,7 @@ test("Claude credentials are read from Keychain once per run", { skip: process.p
     globalThis.fetch = async () => new Response(JSON.stringify({ limits: [{ kind: "session", percent: 5 }] }));
   `);
   try {
-    const result = spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["--import", preloadPath, "mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { CLAUDE_SECURITY_COMMAND: keychain }),
@@ -261,7 +261,7 @@ test("a Claude 429 starts a cooldown that skips the next request", async () => {
       return new Response("", { status: 429, headers: { "retry-after": "120" } });
     };
   `);
-  const run = () => spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
+  const run = () => spawnSync(process.execPath, ["--import", preloadPath, "mods/quota/collect.mjs"], {
     cwd: dirname(dirname(fileURLToPath(import.meta.url))),
     encoding: "utf8",
     env: isolatedEnv(directory),
@@ -285,7 +285,7 @@ test("a Claude 429 starts a cooldown that skips the next request", async () => {
 test("missing CLIs are reported against their own provider", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-quota-missing-test-"));
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory),
@@ -307,7 +307,7 @@ test("Codex exiting mid-conversation fails only the ChatGPT provider", async () 
   await writeFile(codexPath, "#!/bin/sh\nread line\necho '{\"id\":1,\"result\":{}}'\n");
   await chmod(codexPath, 0o755);
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { CODEX_BIN_PATH: codexPath }),
@@ -328,7 +328,7 @@ test("a cache file that is not an object is replaced", async () => {
   try {
     for (const contents of ['"x"', "7", "[1]", "null", "not json"]) {
       await writeFile(cachePath, contents);
-      const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+      const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
         cwd: dirname(dirname(fileURLToPath(import.meta.url))),
         encoding: "utf8",
         env: isolatedEnv(directory),
@@ -352,7 +352,7 @@ test("malformed cached windows are ignored", async () => {
     },
   }));
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory),
@@ -377,7 +377,7 @@ sleep 1
 `);
   await chmod(codexPath, 0o755);
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { CODEX_BIN_PATH: codexPath }),
@@ -410,7 +410,7 @@ read line; echo '${JSON.stringify({ id: 3, result: limits })}'
 `);
   await chmod(codexPath, 0o755);
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { CODEX_BIN_PATH: codexPath }),
@@ -437,7 +437,7 @@ read line; read line; echo '{"id":2,"result":{"account":{"type":"apiKey"}}}'
 `);
   await chmod(codexPath, 0o755);
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { CODEX_BIN_PATH: codexPath }),
@@ -476,7 +476,7 @@ test("Copilot parses finite quota snapshots using gh auth without caching creden
     };
   `);
   try {
-    const result = spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["--import", preloadPath, "mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
@@ -511,7 +511,7 @@ test("a Copilot rate limit starts a cooldown that skips the next request", async
       return new Response("", { status: 403, headers: { "retry-after": "180" } });
     };
   `);
-  const run = () => spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
+  const run = () => spawnSync(process.execPath, ["--import", preloadPath, "mods/quota/collect.mjs"], {
     cwd: dirname(dirname(fileURLToPath(import.meta.url))),
     encoding: "utf8",
     env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
@@ -532,7 +532,7 @@ test("a Copilot rate limit starts a cooldown that skips the next request", async
 test("provider ids given as arguments limit the run to those providers", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-quota-only-test-"));
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs", "copilot", "claude"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs", "copilot", "claude"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory),
@@ -551,7 +551,7 @@ test("Copilot rejects oversized gh token output without exposing it", async () =
   await writeFile(ghPath, "#!/bin/sh\nprintf '%17000s' 'secret-token'\n");
   await chmod(ghPath, 0o755);
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
@@ -572,7 +572,7 @@ test("Copilot times out a hung gh token command with a safe error", async () => 
   await writeFile(ghPath, "#!/bin/sh\nexec sleep 30\n");
   await chmod(ghPath, 0o755);
   try {
-    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
       env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
