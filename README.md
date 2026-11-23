@@ -83,7 +83,7 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 ## What it shows
 
 - Short-term and weekly windows when reported by the provider. Each is named by its period, then what it is scoped to: `5h`, `7d`, `7d Opus`. Copilot's monthly premium-request allowance is `1mo`.
-- The plan each provider reports (for example Max, Plus, Individual), dimmed beside its name.
+- Each provider's icon, the one Herdr uses for that agent, and the plan it reports (for example Max, Plus, Individual), dimmed beside its name. A long plan name is shortened when the row is tight.
 - Quota used, reset countdown, and a bar of what is used in expanded details, with a mark for an even pace (see [The pace mark](#the-pace-mark)).
 - If a refresh fails, the cached reading is marked "Stale" with its age and the reason.
 - When the Claude sign-in has expired, the last reading stays with a dim "Paused until Claude Code next runs". Claude Code renews the sign-in the next time it runs.

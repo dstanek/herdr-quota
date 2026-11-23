@@ -1,11 +1,11 @@
-import { View, div, svg } from "gpui-kit";
+import { View, div, image, svg } from "gpui-kit";
 import { h_flex, v_flex } from "gpui-base";
-import { appHome, checking, exec, layout, openOverlay, props, run, setShared, shared, theme } from "herdr";
+import { appHome, checking, exec, knownAgents, layout, openOverlay, props, run, setShared, shared, theme } from "herdr";
 
 const PROVIDERS = [
-  { id: "claude", name: "Claude", hint: "Claude Code sign-in" },
-  { id: "chatgpt", name: "ChatGPT", hint: "Codex sign-in" },
-  { id: "copilot", name: "GitHub Copilot", hint: "GitHub CLI sign-in (experimental)" },
+  { id: "claude", name: "Claude", program: "claude", hint: "Claude Code sign-in" },
+  { id: "chatgpt", name: "ChatGPT", program: "codex", hint: "Codex sign-in" },
+  { id: "copilot", name: "GitHub Copilot", program: "copilot", hint: "GitHub CLI sign-in (experimental)" },
 ];
 
 // The layout block's `providers` prop picks and orders what the panel offers; without it, all of them.
@@ -123,8 +123,14 @@ export default class Quota extends View {
     this.paused = {};
     this.busy = false;
     this.updatedAt = null;
+    this.programs = {};
     this.refresh(cx);
     if (checking()) return;
+    // Herdr's program table has each agent's icon and how to draw it; a provider without one goes without.
+    cx.spawn(async (cx) => {
+      for (const program of await knownAgents().catch(() => [])) this.programs[program.key] = program;
+      cx.notify();
+    });
     // One tick a minute moves countdowns and ages on, and reads again once the chosen interval has passed.
     cx.timer.every(60000, (cx) => {
       if (Date.now() - this.ranAt >= interval() * 60000 - 5000) this.refresh(cx);
@@ -211,8 +217,16 @@ export default class Quota extends View {
     return Boolean(this.absent[provider.id]) && !this.windows[provider.id]?.windows?.length;
   }
 
+  icon(t, provider) {
+    const program = this.programs[provider.program];
+    if (!program?.icon) return null;
+    return program.tint ? svg(program.icon).size(14).flex_none().text_color(t.foreground)
+      : image(program.icon).w(14).h(14).flex_none();
+  }
+
   provider(t, provider) {
     const data = this.windows[provider.id];
+    const icon = this.icon(t, provider);
     const error = this.errors[provider.id] || data?.note;
     const windows = Array.isArray(data?.windows) ? data.windows : [];
     // How old a failed refresh left the reading, then why it failed.
@@ -226,6 +240,7 @@ export default class Quota extends View {
     return v_flex().gap(5)
       .child(h_flex().id(`quota-${provider.id}`).items_center().gap(7).cursor_pointer()
         .on_click(() => save({ expanded: { ...saved().expanded, [provider.id]: !open } }))
+        .when(Boolean(icon), (el) => el.child(icon))
         .child(div().flex_none().text_color(t.foreground).font_semibold().child(provider.name))
         .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.dim).child(plan))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
