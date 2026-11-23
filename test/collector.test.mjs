@@ -315,6 +315,67 @@ sleep 1
   }
 });
 
+test("Codex reports the plan and names windows from additional limits", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-codex-limits-test-"));
+  const codexPath = join(directory, "codex");
+  const main = {
+    limitId: "codex",
+    planType: "pro",
+    primary: { usedPercent: 7, windowDurationMins: 300, resetsAt: 1900000000 },
+    secondary: { usedPercent: 40, windowDurationMins: 10080, resetsAt: 1900500000 },
+  };
+  const limits = {
+    rateLimits: main,
+    rateLimitsByLimitId: { codex: main, spark: { limitName: "Spark", primary: { usedPercent: 3, windowDurationMins: 90 } } },
+  };
+  await writeFile(codexPath, `#!/bin/sh
+read line; echo '{"id":1,"result":{}}'
+read line; read line; echo '{"id":2,"result":{"account":{"type":"chatgpt","planType":"plus"}}}'
+read line; echo '${JSON.stringify({ id: 3, result: limits })}'
+`);
+  await chmod(codexPath, 0o755);
+  try {
+    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: isolatedEnv(directory, { CODEX_BIN_PATH: codexPath }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const { plan, windows } = JSON.parse(result.stdout).providers.chatgpt;
+    assert.equal(plan, "pro");
+    assert.deepEqual(windows, [
+      { label: "5h", usedPercent: 7, resetsAt: 1900000000000 },
+      { label: "7d", usedPercent: 40, resetsAt: 1900500000000 },
+      { label: "90m Spark", usedPercent: 3, resetsAt: null },
+    ]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("Codex signed in with an API key is reported, not treated as a subscription", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-codex-apikey-test-"));
+  const codexPath = join(directory, "codex");
+  await writeFile(codexPath, `#!/bin/sh
+read line; echo '{"id":1,"result":{}}'
+read line; read line; echo '{"id":2,"result":{"account":{"type":"apiKey"}}}'
+`);
+  await chmod(codexPath, 0o755);
+  try {
+    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: isolatedEnv(directory, { CODEX_BIN_PATH: codexPath }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const snapshot = JSON.parse(result.stdout);
+    assert.equal(snapshot.providers.chatgpt, undefined);
+    assert.equal(snapshot.errors.chatgpt, "Codex is using API-key auth, not a ChatGPT subscription");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("Copilot parses finite quota snapshots using gh auth without caching credentials", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-test-"));
   const cachePath = join(directory, "cache.json");
