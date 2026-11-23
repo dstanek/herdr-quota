@@ -119,6 +119,7 @@ async function codexRpc() {
     child.kill();
   }, 20000);
   child.on("error", failWaiting);
+  child.stdin.on("error", failWaiting);
   child.on("exit", (code) => {
     if (waiting.size) failWaiting(new Error(`Codex app-server exited (${code ?? "unknown status"})`));
   });
