@@ -121,7 +121,8 @@ export default class Quota extends View {
 
   render() {
     const t = theme();
-    const updated = this.updatedAt ? new Date(this.updatedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : null;
+    // The runtime ignores toLocaleTimeString's options, so drop the seconds by hand.
+    const updated = this.updatedAt ? new Date(this.updatedAt).toLocaleTimeString().replace(/(\d+:\d+):\d+/, "$1") : null;
     return v_flex().id("usage-panel").size_full().min_h(0).bg(t.chrome).border_t(1).border_color(t.border)
       .text_size(13)
       .child(h_flex().h(41).pl(16).pr(10).pt(14).pb(5).flex_none().items_center().justify_between()
