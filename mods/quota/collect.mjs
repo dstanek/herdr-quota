@@ -77,6 +77,14 @@ function claudeCredentials() {
   return claudeSignIn;
 }
 
+// The older response shape names its windows as fields: five_hour, seven_day, seven_day_opus.
+function claudeFieldLabel(key) {
+  const [, span, rest] = /^(five_hour|seven_day)(?:_(.+))?$/.exec(key) || [];
+  if (!span) return key.replaceAll("_", " ");
+  const scope = rest ? ` ${rest.charAt(0).toUpperCase()}${rest.slice(1).replaceAll("_", " ")}` : "";
+  return `${span === "five_hour" ? "5h" : "7d"}${scope}`;
+}
+
 // collectProvider has already turned away an expired sign-in.
 async function claude() {
   const oauth = (await claudeCredentials())?.claudeAiOauth;
@@ -118,7 +126,7 @@ async function claude() {
       for (const [key, item] of Object.entries(body)) {
         if (item && typeof item === "object" && typeof item.utilization === "number") {
           const duration = key.startsWith("five_hour") ? 5 * hour : key.startsWith("seven_day") ? 7 * day : null;
-          const window = normalizeWindow(key.replaceAll("_", " "), item.utilization, item.resets_at, duration);
+          const window = normalizeWindow(claudeFieldLabel(key), item.utilization, item.resets_at, duration);
           if (window) windows.push(window);
         }
       }

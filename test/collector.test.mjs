@@ -151,6 +151,8 @@ test("Claude parses session, weekly, and per-model windows from either response 
       five_hour: { utilization: 12, resets_at: "2030-01-01T00:00:00Z" },
       seven_day: { utilization: 130, resets_at: null },
       seven_day_opus: null,
+      seven_day_sonnet: { utilization: 5, resets_at: null },
+      extra_usage: { utilization: 1, resets_at: null },
     },
   };
   try {
@@ -181,8 +183,10 @@ test("Claude parses session, weekly, and per-model windows from either response 
       { label: "7d Opus", usedPercent: 10, resetsAt: Date.parse("2030-01-05T00:00:00Z"), startsAt: Date.parse("2029-12-29T00:00:00Z") },
     ]);
     assert.deepEqual(windows.utilization, [
-      { label: "five hour", usedPercent: 12, resetsAt: Date.parse("2030-01-01T00:00:00Z"), startsAt: Date.parse("2029-12-31T19:00:00Z") },
-      { label: "seven day", usedPercent: 100, resetsAt: null },
+      { label: "5h", usedPercent: 12, resetsAt: Date.parse("2030-01-01T00:00:00Z"), startsAt: Date.parse("2029-12-31T19:00:00Z") },
+      { label: "7d", usedPercent: 100, resetsAt: null },
+      { label: "7d Sonnet", usedPercent: 5, resetsAt: null },
+      { label: "extra usage", usedPercent: 1, resetsAt: null },
     ]);
   } finally {
     await rm(directory, { recursive: true, force: true });
