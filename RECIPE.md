@@ -53,7 +53,7 @@ What the collector reaches, per provider:
 - **ChatGPT.** Runs `codex app-server --stdio` and asks it, over JSON-RPC, `initialize`, `account/read` and `account/rateLimits/read`. It never sees a Codex credential.
 - **Copilot.** Runs `gh api --include copilot_internal/user`, so the GitHub CLI makes the request and the collector never sees a GitHub token. The plan is `copilot_plan`; the reset date is `quota_reset_date_utc`.
 
-Environment overrides: `CLAUDE_CONFIG_DIR`, `CODEX_BIN_PATH`, `GH_BIN_PATH`, `HERDR_QUOTA_CACHE`, and `CLAUDE_SECURITY_COMMAND` (for tests).
+Environment overrides: `CLAUDE_CONFIG_DIR`, `CODEX_BIN_PATH`, `GH_BIN_PATH`, `HERDR_QUOTA_CACHE`, and, for tests, `CLAUDE_SECURITY_COMMAND` and `GH_TIMEOUT_MS`.
 
 ## Watch out
 

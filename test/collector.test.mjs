@@ -590,8 +590,8 @@ test("Copilot times out a hung gh with a safe error", async () => {
     const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
       cwd: dirname(dirname(fileURLToPath(import.meta.url))),
       encoding: "utf8",
-      env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
-      timeout: 15000,
+      env: isolatedEnv(directory, { GH_BIN_PATH: ghPath, GH_TIMEOUT_MS: "300" }),
+      timeout: 5000,
     });
     assert.equal(result.status, 0, result.stderr);
     assert.equal(JSON.parse(result.stdout).errors.copilot, "GitHub CLI request timed out");

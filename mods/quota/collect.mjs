@@ -247,7 +247,7 @@ function ghApi(path) {
     const timeout = setTimeout(() => {
       child?.kill();
       finish(new Error("GitHub CLI request timed out"));
-    }, 10000);
+    }, Number(process.env.GH_TIMEOUT_MS) || 10000);
     try {
       child = spawn(executable, ["api", "--include", path], {
         stdio: ["ignore", "pipe", "ignore"],
