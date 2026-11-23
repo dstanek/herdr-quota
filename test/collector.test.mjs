@@ -11,7 +11,7 @@ import { readClaudeCredentials } from "../scripts/claude-credentials.mjs";
 function isolatedEnv(directory, overrides = {}) {
   return {
     ...process.env,
-    HERDR_USAGE_CACHE: join(directory, "cache.json"),
+    HERDR_QUOTA_CACHE: join(directory, "cache.json"),
     CLAUDE_CONFIG_DIR: join(directory, "claude"),
     CLAUDE_SECURITY_COMMAND: join(directory, "missing-security"),
     CODEX_BIN_PATH: join(directory, "missing-codex"),
@@ -149,7 +149,7 @@ test("Claude parses session, weekly, and per-model windows from either response 
       const result = spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
         cwd: dirname(dirname(fileURLToPath(import.meta.url))),
         encoding: "utf8",
-        env: isolatedEnv(directory, { HERDR_USAGE_CACHE: join(directory, `${shape}.json`) }),
+        env: isolatedEnv(directory, { HERDR_QUOTA_CACHE: join(directory, `${shape}.json`) }),
       });
       assert.equal(result.status, 0, result.stderr);
       assert.doesNotMatch(result.stdout, /test-claude-token|Bearer/);

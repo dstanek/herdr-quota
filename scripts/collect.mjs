@@ -8,8 +8,8 @@ const home = homedir();
 const errors = {};
 const absent = {};
 const providers = {};
-const cachePath = process.env.HERDR_USAGE_CACHE
-  || join(process.env.XDG_CACHE_HOME || join(home, ".cache"), "herdr-usage.json");
+const cachePath = process.env.HERDR_QUOTA_CACHE
+  || join(process.env.XDG_CACHE_HOME || join(home, ".cache"), "herdr-quota.json");
 const cached = await readJson(cachePath);
 const cache = cached && typeof cached === "object" && !Array.isArray(cached) ? cached : {};
 if (!cache.providers || typeof cache.providers !== "object") cache.providers = {};

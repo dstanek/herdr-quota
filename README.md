@@ -53,7 +53,7 @@ herdr-app do layout.switch '{"name":"main"}'
 node scripts/install.mjs --uninstall
 ```
 
-The cache file (`~/.cache/herdr-usage.json`) is left in place; delete it if you want.
+The cache file (`~/.cache/herdr-quota.json`) is left in place; delete it if you want.
 
 ### Provider setup
 
@@ -76,7 +76,7 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 - The panel grows and shrinks to fit its rows when it sits in a fixed-height sidebar block, as the installer places it.
 - Automatic refresh every five minutes, plus manual refresh from the panel header.
 
-If Claude or Copilot rate-limits requests, the collector backs off for the interval the provider asks for (ten minutes if it gives none). ChatGPT has no backoff; a failed request is simply retried on the next refresh. In every case the last successful reading stays visible with its age. The cache is stored at `~/.cache/herdr-usage.json` (or under `XDG_CACHE_HOME`) and contains quota percentages, reset times, plan names, and fetch timestamps—not credentials.
+If Claude or Copilot rate-limits requests, the collector backs off for the interval the provider asks for (ten minutes if it gives none). ChatGPT has no backoff; a failed request is simply retried on the next refresh. In every case the last successful reading stays visible with its age. The cache is stored at `~/.cache/herdr-quota.json` (or under `XDG_CACHE_HOME`) and contains quota percentages, reset times, plan names, and fetch timestamps—not credentials.
 
 ## Troubleshooting
 
@@ -96,7 +96,7 @@ The panel itself has no settings. The collector reads a few environment variable
 | `CLAUDE_CONFIG_DIR` | Directory holding Claude Code's `.credentials.json` | `~/.claude` |
 | `CODEX_BIN_PATH` | Codex CLI executable | `codex` on `PATH` |
 | `GH_BIN_PATH` | GitHub CLI executable | `gh` on `PATH` |
-| `HERDR_USAGE_CACHE` | Cache file location | `~/.cache/herdr-usage.json` |
+| `HERDR_QUOTA_CACHE` | Cache file location | `~/.cache/herdr-quota.json` |
 | `CLAUDE_SECURITY_COMMAND` | macOS Keychain command; exists for the tests | `security` |
 
 The panel always lists all three providers and reads each one's existing local sign-in, so there is no provider setup file to maintain. A provider you have never signed in to stays in the list, dimmed and marked "Not signed in"; it cannot be hidden. The five-minute refresh interval is fixed, and providers always start collapsed.
