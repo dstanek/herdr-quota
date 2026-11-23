@@ -97,7 +97,7 @@ If Claude or Copilot rate-limits requests, the collector backs off for the inter
 
 ## Configuration and scope
 
-The collector reads a few environment variables, which must be set in the environment Herdr starts with:
+The collector reads a few environment variables. Herdr runs it with your user environment; restart Herdr after changing one:
 
 | Variable | Effect | Default |
 |---|---|---|
