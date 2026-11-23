@@ -84,7 +84,7 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 
 - Short-term and weekly windows when reported by the provider. Each is named by its period, then what it is scoped to: `5h`, `7d`, `7d Opus`. Copilot's monthly premium-request allowance is `1mo`.
 - The plan each provider reports (for example Max, Plus, Individual), dimmed beside its name.
-- Quota used, reset countdown, and a bar of what is used in expanded details. A tick on the bar marks how much of the window has passed, which is where an even pace would put you: a bar that runs past the tick is using quota faster than the window allows. Readings turn amber at 60% used or when usage is 10 or more points ahead of that even pace, and red at 85% used.
+- Quota used, reset countdown, and a bar of what is used in expanded details, with a mark for an even pace (see [The pace mark](#the-pace-mark)).
 - If a refresh fails, the cached reading is marked "Stale" with its age and the reason.
 - When the Claude sign-in has expired, the last reading stays with a dim "Paused until Claude Code next runs". Claude Code renews the sign-in the next time it runs.
 - Only provider-reported values. Expired windows are hidden.
@@ -92,6 +92,19 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 - Automatic refresh every five minutes, plus manual refresh from the panel header.
 
 If Claude or Copilot rate-limits requests, the collector backs off for the interval the provider asks for (ten minutes if it gives none). ChatGPT has no backoff; a failed request is simply retried on the next refresh. In every case the last successful reading stays visible with its age. The cache is stored at `~/.cache/herdr-quota.json` (or under `XDG_CACHE_HOME`) and contains quota percentages, reset times, plan names, and fetch timestamps—not credentials.
+
+### The pace mark
+
+Each bar in the expanded details has a small vertical mark. The bar's fill is how much of the quota you have used; the mark is how much of the window's time has passed. If you used quota at a perfectly even rate, the fill would end exactly at the mark.
+
+- **Fill short of the mark:** you are using quota more slowly than the window allows and will not run out at this rate.
+- **Fill past the mark:** you are ahead of pace. Halfway through a 5-hour window with 70% used, the mark sits at 50% and the fill runs 20 points beyond it.
+
+The mark moves right as the window runs, so a reading that was ahead of pace can fall back behind it without any quota being returned.
+
+Color follows the same idea. A reading turns amber at 60% used, or earlier when it is 10 or more points ahead of the mark, and red at 85% used. The collapsed row uses this too: it shows a window that is nearly used up, otherwise one that is ahead of pace, otherwise the most used.
+
+A bar has no mark when the provider does not give a reset time or the window's length is not known.
 
 ## Troubleshooting
 
