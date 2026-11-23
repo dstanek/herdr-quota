@@ -93,11 +93,14 @@ function paceLabel(window) {
   return aheadOfPace(window) ? `${Math.round(window.usedPercent - paceMark(window))}% ahead of pace` : "";
 }
 
-// The window that most needs attention: one nearly used up, then one with a warning, then the most used.
+// The window that most needs attention: one nearly used up, then one with a warning, the most used of those.
+// With nothing to flag it is the shortest window, the one that moves soonest.
 function urgentWindow(windows) {
   const rank = (window) => (window.usedPercent >= 85 ? 2 : warning(window) ? 1 : 0);
-  return windows.reduce((urgent, window) => (!urgent || rank(window) > rank(urgent)
-    || (rank(window) === rank(urgent) && window.usedPercent > urgent.usedPercent) ? window : urgent), null);
+  const length = (window) => (window.resetsAt - window.startsAt > 0 ? window.resetsAt - window.startsAt : Infinity);
+  const beats = (window, other) => (rank(window) !== rank(other) ? rank(window) > rank(other)
+    : rank(window) ? window.usedPercent > other.usedPercent : length(window) < length(other));
+  return windows.reduce((urgent, window) => (!urgent || beats(window, urgent) ? window : urgent), null);
 }
 
 // The layout block showing this mod, when a column gives it a fixed height.

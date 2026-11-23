@@ -2,7 +2,7 @@
 
 A native Herdr **desktop** sidebar panel for checking remaining subscription usage for Claude Code, ChatGPT, and (experimentally) GitHub Copilot.
 
-The panel starts compact: each provider shows the window that most needs attention and the percentage used in it: one that is nearly used up, otherwise one running ahead of an even pace, otherwise the most used. Click a provider to expand its other quota windows, percentages, and reset times.
+The panel starts compact: each provider shows the window that most needs attention and the percentage used in it: one that is nearly used up, otherwise one running ahead of an even pace, otherwise the shortest window, such as the 5-hour one. Click a provider to expand its other quota windows, percentages, and reset times.
 
 The panel sits at the bottom of the sidebar, beneath Agents. These show it with sample data, Claude expanded, in three states:
 
@@ -102,7 +102,7 @@ Each bar in the expanded details has a small vertical mark. The bar's fill is ho
 
 The mark moves right as the window runs, so a reading that was ahead of pace can fall back behind it without any quota being returned.
 
-Color follows the mark. A reading turns amber when it is 10 or more points ahead of the mark, and red at 85% used however it got there. Being well into your quota is not a warning by itself: 61% used with 82% of the week gone stays neutral, because at that rate the quota outlasts the window. Pace is ignored below 20% used: just after a reset almost any use is ahead of pace, and none of it is a worry. A window without a mark has no pace to go by, so it turns amber at 60% used instead. The collapsed row uses this too: it shows a window that is nearly used up, otherwise one that is ahead of pace, otherwise the most used.
+Color follows the mark. A reading turns amber when it is 10 or more points ahead of the mark, and red at 85% used however it got there. Being well into your quota is not a warning by itself: 61% used with 82% of the week gone stays neutral, because at that rate the quota outlasts the window. Pace is ignored below 20% used: just after a reset almost any use is ahead of pace, and none of it is a worry. A window without a mark has no pace to go by, so it turns amber at 60% used instead. The collapsed row uses this too: it shows a window that is nearly used up, otherwise one that is ahead of pace. When nothing needs attention it shows the shortest window, the 5-hour one where there is one, since that is the limit you meet first.
 
 A bar has no mark when the provider does not give a reset time or the window's length is not known.
 
