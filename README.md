@@ -4,7 +4,11 @@ A native Herdr **desktop** sidebar panel for checking remaining subscription usa
 
 The panel starts compact: each provider shows the window that most needs attention and the percentage used in it: one that is nearly used up, otherwise one running ahead of an even pace, otherwise the most used. Click a provider to expand its other quota windows, percentages, and reset times.
 
-<img src="preview.png" alt="The Quota panel with Claude expanded, ChatGPT collapsed, and Copilot not signed in (sample data)" width="270">
+The panel sits at the bottom of the sidebar, beneath Agents. These show it with sample data, Claude expanded, in three states:
+
+| Everything within pace | Slightly ahead of pace | Far ahead of pace |
+|---|---|---|
+| <img src="preview-in-range.png" alt="Herdr's sidebar with the Quota panel beneath Agents; every reading is neutral and each bar ends before its pace tick" width="270"> | <img src="preview.png" alt="The same panel with Claude's 5-hour window and ChatGPT's 7-day window in amber, their bars past the pace tick" width="270"> | <img src="preview-far-over.png" alt="The same panel with Claude's 5-hour window in red at 92% used and several other readings in amber" width="270"> |
 
 ## Install
 
