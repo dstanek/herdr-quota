@@ -161,3 +161,5 @@ The tests never touch your real sign-ins: each one points the collector at stand
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+The ChatGPT row's icon, `mods/quota/icons/codex.svg`, is the Codex icon from [LobeHub's icon set](https://github.com/lobehub/lobe-icons) with its background tile removed, used under that project's MIT license ([notice](mods/quota/icons/LICENSE-LobeHub.txt)). The other icons are the ones Herdr ships and are not included here. Provider names and logos belong to their owners.

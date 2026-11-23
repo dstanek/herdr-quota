@@ -4,7 +4,8 @@ import { appHome, checking, exec, knownAgents, layout, openOverlay, props, run, 
 
 const PROVIDERS = [
   { id: "claude", name: "Claude", program: "claude", hint: "Claude Code sign-in" },
-  { id: "chatgpt", name: "ChatGPT", program: "codex", hint: "Codex sign-in" },
+  // Herdr's Codex icon sits on a white tile, which shows as a box on a light theme; this is the glyph alone.
+  { id: "chatgpt", name: "ChatGPT", program: "codex", icon: "mods/quota/icons/codex.svg", hint: "Codex sign-in" },
   { id: "copilot", name: "GitHub Copilot", program: "copilot", hint: "GitHub CLI sign-in (experimental)" },
 ];
 
@@ -227,6 +228,7 @@ export default class Quota extends View {
   }
 
   icon(t, provider) {
+    if (provider.icon) return image(provider.icon).w(14).h(14).flex_none();
     const program = this.programs[provider.program];
     if (!program?.icon) return null;
     return program.tint ? svg(program.icon).size(14).flex_none().text_color(t.foreground)

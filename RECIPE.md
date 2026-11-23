@@ -38,6 +38,7 @@ One mod, `mods/quota/`:
 
 - `main.js`: the panel.
 - `mod.json`: `{ "place": "none", "title": "Quota" }`. It appears only where a layout puts it.
+- `icons/codex.svg` and `icons/LICENSE-LobeHub.txt`: the ChatGPT row's icon and its license notice.
 - `collect.mjs` and `claude-credentials.mjs`: the collector, plain Node scripts (Node 22 or newer, no dependencies) that do all the reading and print one JSON object.
 
 There is no `layouts/` folder. To show the panel, add this block to a layout the person owns, immediately after the block with id `agents`, inside the same column. Herdr's shipped `main` cannot have its structure edited in place, so clone it first (`layout.clone {name: "main", as: "quota-main"}`) and edit the clone:
@@ -48,7 +49,7 @@ There is no `layouts/` folder. To show the panel, add this block to a layout the
 
 Optional prop on that block: `"props": { "providers": ["claude", "chatgpt"] }` chooses and orders what the panel offers from `claude`, `chatgpt`, `copilot`. Providers left out are not queried and are not listed in the settings.
 
-From `herdr` the panel uses `appHome`, `checking`, `exec`, `layout`, `props`, `run("layout.resize", {id, px})`, `knownAgents`, `openOverlay`, `shared`, `setShared` and `theme`, plus `cx.timer.every` for the one-minute tick. Its chevrons are `mods/workspace-chrome/chevron-right.svg` and `chevron-down.svg`; the gear and the check come from the same folder. Provider icons come from Herdr's program table (`knownAgents()`, keys `claude`, `codex` for ChatGPT, and `copilot`): drawn with `svg` in the foreground color when the entry says `tint`, otherwise with `image`. A provider whose program has no icon gets none.
+From `herdr` the panel uses `appHome`, `checking`, `exec`, `layout`, `props`, `run("layout.resize", {id, px})`, `knownAgents`, `openOverlay`, `shared`, `setShared` and `theme`, plus `cx.timer.every` for the one-minute tick. Its chevrons are `mods/workspace-chrome/chevron-right.svg` and `chevron-down.svg`; the gear and the check come from the same folder. Claude's and Copilot's icons come from Herdr's program table (`knownAgents()`, keys `claude` and `copilot`): drawn with `svg` in the foreground color when the entry says `tint`, otherwise with `image`. A provider whose program has no icon gets none. ChatGPT's icon is the mod's own `icons/codex.svg`, drawn with `image`: Herdr's Codex icon with its white tile removed and the view cropped to the glyph, because the tile shows as a box on a light theme. It comes from the LobeHub icon set (MIT; the notice is `icons/LICENSE-LobeHub.txt`).
 
 The panel runs `node <appHome>/mods/quota/collect.mjs [provider ids]` with a 25-second timeout. The collector prints `{ providers, errors, absent, paused }`, where each provider is `{ plan, windows: [{ label, usedPercent, resetsAt, startsAt? }], fetchedAt, stale?, note? }`. `startsAt` is set when the window's length is known: 5 hours for Claude's session, 7 days for its weekly windows, the length Codex reports, and a calendar month for Copilot. It keeps its last readings and any cooldowns in `~/.cache/herdr-quota.json` (or under `XDG_CACHE_HOME`), written with mode 0600.
 
@@ -65,7 +66,7 @@ Environment overrides: `CLAUDE_CONFIG_DIR`, `CODEX_BIN_PATH`, `GH_BIN_PATH`, `HE
 - **Tell the person before adding it.** This mod reaches the network (Anthropic directly; OpenAI and GitHub through their own CLIs), runs programs (`node`, `security`, `codex`, `gh`) and reads a file outside its folder (Claude Code's credentials). The Claude access token is the only credential it handles, and no token is written to the cache, to the collector's output or to a log.
 - **Two of the three endpoints are undocumented.** Anthropic's `oauth/usage` and GitHub's `copilot_internal/user` can change or disappear without notice. Copilot buckets marked unlimited, or without a usable percentage, are skipped.
 - **`node` must be on the path Herdr runs programs with.** Without it the panel shows the failure in the "working" color at the bottom.
-- **The folder name `quota` is assumed twice in `main.js`:** in the collector path and in the search for the panel's own layout block. If the mod is renamed to avoid a clash, change both.
+- **The folder name `quota` is assumed three times in `main.js`:** in the collector path, in the ChatGPT icon's path and in the search for the panel's own layout block. If the mod is renamed to avoid a clash, change all three.
 - **The Claude token is never refreshed.** Claude Code does that when it runs. An expired sign-in is reported as "Paused until Claude Code next runs", in the dim color.
 - **macOS may ask for Keychain access.** The collector waits three seconds; if the read fails and only an old credentials file is left, it says so instead of calling the sign-in expired.
 - **This runtime ignores the options passed to `toLocaleTimeString`**, so the header strips the seconds itself.
