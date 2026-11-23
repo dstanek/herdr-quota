@@ -115,12 +115,58 @@ test("expired Claude OAuth credentials suppress usage requests and clear retry c
   }
 });
 
-test("collector includes both subscription windows", async () => {
-  const source = await readFile(new URL("../scripts/collect.mjs", import.meta.url), "utf8");
-  assert.match(source, /item\.kind === "session"/);
-  assert.match(source, /item\.kind === "weekly_all"/);
-  assert.match(source, /item\.kind === "session" \? "5h"/);
-  assert.match(source, /item\.kind === "weekly_all" \? "7d"/);
+test("Claude parses session, weekly, and per-model windows from either response shape", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-claude-test-"));
+  const configDir = join(directory, "claude");
+  const preloadPath = join(directory, "mock-fetch.mjs");
+  await mkdir(configDir);
+  await writeFile(join(configDir, ".credentials.json"), JSON.stringify({
+    claudeAiOauth: { accessToken: "test-claude-token", expiresAt: Date.now() + 60 * 60_000 },
+  }));
+  const bodies = {
+    limits: { limits: [
+      { kind: "session", percent: 25, resets_at: "2030-01-01T00:00:00Z" },
+      { kind: "weekly_all", percent: 40, resets_at: "2030-01-05T00:00:00Z" },
+      { kind: "weekly_scoped", percent: 10, scope: { model: { display_name: "Opus" } }, resets_at: "2030-01-05T00:00:00Z" },
+      { kind: "session", percent: "not-a-number" },
+    ] },
+    utilization: {
+      five_hour: { utilization: 12, resets_at: "2030-01-01T00:00:00Z" },
+      seven_day: { utilization: 130, resets_at: null },
+      seven_day_opus: null,
+    },
+  };
+  try {
+    const windows = {};
+    for (const [shape, body] of Object.entries(bodies)) {
+      await writeFile(preloadPath, `
+        globalThis.fetch = async (url, options) => {
+          if (url !== "https://api.anthropic.com/api/oauth/usage") throw new Error("unexpected url");
+          if (options.headers.authorization !== "Bearer test-claude-token") throw new Error("missing auth");
+          return new Response(${JSON.stringify(JSON.stringify(body))});
+        };
+      `);
+      const result = spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
+        cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+        encoding: "utf8",
+        env: isolatedEnv(directory, { HERDR_USAGE_CACHE: join(directory, `${shape}.json`) }),
+      });
+      assert.equal(result.status, 0, result.stderr);
+      assert.doesNotMatch(result.stdout, /test-claude-token|Bearer/);
+      windows[shape] = JSON.parse(result.stdout).providers.claude.windows;
+    }
+    assert.deepEqual(windows.limits, [
+      { label: "5h", usedPercent: 25, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
+      { label: "7d", usedPercent: 40, resetsAt: Date.parse("2030-01-05T00:00:00Z") },
+      { label: "7d Opus", usedPercent: 10, resetsAt: Date.parse("2030-01-05T00:00:00Z") },
+    ]);
+    assert.deepEqual(windows.utilization, [
+      { label: "five hour", usedPercent: 12, resetsAt: Date.parse("2030-01-01T00:00:00Z") },
+      { label: "seven day", usedPercent: 100, resetsAt: null },
+    ]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("collector uses a fixed Codex app-server argv", async () => {
