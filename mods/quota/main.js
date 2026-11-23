@@ -29,13 +29,16 @@ function interval() {
   return INTERVALS.includes(minutes) ? minutes : 5;
 }
 
+// The parts of a provider's row the person can hide.
+const PARTS = [["icon", "Icon"], ["name", "Name"], ["plan", "Plan"]];
+
 const ids = (providers) => providers.map((provider) => provider.id).join(",");
 
 // What the person chose, kept by Herdr across restarts. The store is shared by every mod, hence the prefix.
 const SAVED = "herdr-quota.settings";
 function saved() {
   const stored = shared(SAVED);
-  return { expanded: {}, off: [], ...(stored && typeof stored === "object" ? stored : {}) };
+  return { expanded: {}, off: [], hide: [], ...(stored && typeof stored === "object" ? stored : {}) };
 }
 function save(change) {
   setShared(SAVED, { ...saved(), ...change });
@@ -184,7 +187,7 @@ export default class Quota extends View {
       mod: "quota",
       kind: "popup",
       width: 230,
-      height: 10 + 28 + offered.length * 30 + 34 + INTERVALS.length * 30,
+      height: 10 + 28 + offered.length * 30 + 34 + PARTS.length * 30 + 34 + INTERVALS.length * 30,
       props: { menu: true, start: props() ?? {}, absent: offered.filter((provider) => this.hidden(provider)).map((provider) => provider.id) },
     });
   }
@@ -207,6 +210,12 @@ export default class Quota extends View {
           () => save({ off: on ? [...off, provider.id] : off.filter((id) => id !== provider.id) }),
           on && absent.includes(provider.id) ? "not signed in" : "");
       }))
+      .child(div().px(8).pt(12).pb(4).text_size(10.5).text_color(t.dim).child("Show for each provider"))
+      .children(PARTS.map(([part, label]) => {
+        const hide = saved().hide;
+        const on = !hide.includes(part);
+        return row(`quota-show-${part}`, label, on, () => save({ hide: on ? [...hide, part] : hide.filter((other) => other !== part) }));
+      }))
       .child(div().px(8).pt(12).pb(4).text_size(10.5).text_color(t.dim).child("Refresh every"))
       .children(INTERVALS.map((minutes) => row(`quota-interval-${minutes}`, `${minutes} minutes`, minutes === interval(),
         () => save({ minutes }))));
@@ -226,7 +235,10 @@ export default class Quota extends View {
 
   provider(t, provider) {
     const data = this.windows[provider.id];
-    const icon = this.icon(t, provider);
+    const hide = saved().hide;
+    const icon = hide.includes("icon") ? null : this.icon(t, provider);
+    // Something has to say which provider the row is: without an icon, the name stays.
+    const named = !icon || !hide.includes("name");
     const error = this.errors[provider.id] || data?.note;
     const windows = Array.isArray(data?.windows) ? data.windows : [];
     // How old a failed refresh left the reading, then why it failed.
@@ -236,12 +248,12 @@ export default class Quota extends View {
     const current = urgentWindow(windows);
     const currentUsed = current ? Math.round(current.usedPercent) : null;
     const open = Boolean(saved().expanded[provider.id]);
-    const plan = typeof data?.plan === "string" ? data.plan.charAt(0).toUpperCase() + data.plan.slice(1) : "";
+    const plan = typeof data?.plan === "string" && !hide.includes("plan") ? data.plan.charAt(0).toUpperCase() + data.plan.slice(1) : "";
     return v_flex().gap(5)
       .child(h_flex().id(`quota-${provider.id}`).items_center().gap(7).cursor_pointer()
         .on_click(() => save({ expanded: { ...saved().expanded, [provider.id]: !open } }))
         .when(Boolean(icon), (el) => el.child(icon))
-        .child(div().flex_none().text_color(t.foreground).font_semibold().child(provider.name))
+        .when(named, (el) => el.child(div().flex_none().text_color(t.foreground).font_semibold().child(provider.name)))
         .child(div().flex_1().min_w(0).truncate().text_size(9).text_color(t.dim).child(plan))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(current.label)))
         .when(current && !open, (el) => el.child(div().flex_none().text_size(11).font_semibold()
