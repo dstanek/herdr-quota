@@ -188,6 +188,44 @@ test("collector starts Codex with a fixed app-server argv", async () => {
   }
 });
 
+test("a Claude 429 starts a cooldown that skips the next request", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-claude-429-test-"));
+  const cachePath = join(directory, "cache.json");
+  const configDir = join(directory, "claude");
+  const preloadPath = join(directory, "mock-fetch.mjs");
+  const callsPath = join(directory, "calls");
+  await mkdir(configDir);
+  await writeFile(join(configDir, ".credentials.json"), JSON.stringify({
+    claudeAiOauth: { accessToken: "test-claude-token", expiresAt: Date.now() + 60 * 60_000 },
+  }));
+  await writeFile(preloadPath, `
+    import { appendFileSync } from "node:fs";
+    globalThis.fetch = async () => {
+      appendFileSync(${JSON.stringify(callsPath)}, "x");
+      return new Response("", { status: 429, headers: { "retry-after": "120" } });
+    };
+  `);
+  const run = () => spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
+    cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+    encoding: "utf8",
+    env: isolatedEnv(directory),
+  });
+  try {
+    const before = Date.now();
+    const first = run();
+    assert.equal(first.status, 0, first.stderr);
+    assert.equal(JSON.parse(first.stdout).errors.claude, "Usage endpoint is rate limited");
+    const cache = JSON.parse(await readFile(cachePath, "utf8"));
+    assert.ok(cache.retryAfter.claude >= before + 120_000 && cache.retryAfter.claude <= Date.now() + 120_000);
+    const second = run();
+    assert.equal(second.status, 0, second.stderr);
+    assert.equal(JSON.parse(second.stdout).errors.claude, "Rate limited; retry in 2m");
+    assert.equal(await readFile(callsPath, "utf8"), "x");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("missing CLIs are reported against their own provider", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-quota-missing-test-"));
   try {
