@@ -46,7 +46,7 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 ## What it shows
 
 - Short-term and weekly windows when reported by the provider.
-- Remaining quota, reset countdown, and a bar of what is left in expanded details. Readings turn amber below 40% left and red below 15%.
+- Remaining quota, reset countdown, and a bar of what is left in expanded details. Readings turn amber at 40% left and red at 15%.
 - If a refresh fails, the cached reading is marked "Stale" with its age and the reason.
 - Only provider-reported values. Expired windows are hidden.
 - The panel grows and shrinks to fit its rows when it sits in a fixed-height sidebar block, as the installer places it.
