@@ -145,6 +145,25 @@ test("--upgrade replaces the mod files and leaves the layout alone", async () =>
   }
 });
 
+test("--uninstall removes the mod and the generated layout only", async () => {
+  const appHome = await mkdtemp(join(tmpdir(), "herdr-install-uninstall-test-"));
+  const mainPath = join(appHome, "layouts", "main.json");
+  await mkdir(dirname(mainPath));
+  await mkdir(join(appHome, "mods", "agents"), { recursive: true });
+  await writeFile(mainPath, JSON.stringify(mainLayout));
+  try {
+    assert.equal(install(appHome).status, 0);
+    const result = install(appHome, "--uninstall");
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(await readdir(join(appHome, "mods")), ["agents"]);
+    assert.deepEqual(await readdir(join(appHome, "layouts")), ["main.json"]);
+    assert.equal(install(appHome, "--uninstall").status, 0);
+    assert.notEqual(install(appHome, "--bogus").status, 0);
+  } finally {
+    await rm(appHome, { recursive: true, force: true });
+  }
+});
+
 test("installer leaves nothing behind when the main layout has no Agents block", async () => {
   const appHome = await mkdtemp(join(tmpdir(), "herdr-install-layout-test-"));
   const mainPath = join(appHome, "layouts", "main.json");

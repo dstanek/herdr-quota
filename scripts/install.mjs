@@ -1,4 +1,4 @@
-import { access, cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,8 +31,14 @@ if (mode === "--upgrade") {
   await copyMod();
   console.log(`Upgraded the quota mod at ${modHome}. Layouts were left as they are.`);
   process.exit(0);
+} else if (mode === "--uninstall") {
+  await rm(modHome, { recursive: true, force: true });
+  await rm(newLayoutPath, { force: true });
+  console.log(`Removed ${modHome} and ${newLayoutPath}`);
+  console.log(`If Herdr was showing that layout, switch back with: herdr-app do layout.switch '{"name":"main"}'`);
+  process.exit(0);
 } else if (mode) {
-  fail("Usage: node scripts/install.mjs [--upgrade]");
+  fail("Usage: node scripts/install.mjs [--upgrade | --uninstall]");
 }
 
 await mkdir(dirname(modHome), { recursive: true });

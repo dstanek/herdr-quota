@@ -46,14 +46,14 @@ This replaces the mod's files and leaves your layouts as they are; Herdr reloads
 
 ### Uninstall
 
-Switch back to your original layout, then delete the mod and the generated layout. Deleting the cache file is optional.
+Switch back to your original layout, then remove the mod and the generated `quota-main` layout:
 
 ```sh
 herdr-app do layout.switch '{"name":"main"}'
-rm -r ~/.config/herdr-app/mods/quota
-rm ~/.config/herdr-app/layouts/quota-main.json
-rm ~/.cache/herdr-usage.json
+node scripts/install.mjs --uninstall
 ```
+
+The cache file (`~/.cache/herdr-usage.json`) is left in place; delete it if you want.
 
 ### Provider setup
 
