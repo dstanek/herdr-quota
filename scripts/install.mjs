@@ -21,17 +21,31 @@ async function copyMod() {
   await cp(join(root, "scripts", "claude-credentials.mjs"), join(modHome, "claude-credentials.mjs"));
 }
 
+async function exists(path) {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// collect.mjs is the one file only this mod installs, so its absence means another mod has the name.
+async function refuseForeignMod() {
+  if (await exists(modHome) && !await exists(join(modHome, "collect.mjs"))) {
+    fail(`${modHome} is not the quota mod this installer manages (it has no collect.mjs). Leaving it alone.`);
+  }
+}
+
 const mode = process.argv[2];
 if (mode === "--upgrade") {
-  try {
-    await access(modHome);
-  } catch {
-    fail(`Nothing to upgrade at ${modHome}. Run without --upgrade to install.`);
-  }
+  if (!await exists(modHome)) fail(`Nothing to upgrade at ${modHome}. Run without --upgrade to install.`);
+  await refuseForeignMod();
   await copyMod();
   console.log(`Upgraded the quota mod at ${modHome}. Layouts were left as they are.`);
   process.exit(0);
 } else if (mode === "--uninstall") {
+  await refuseForeignMod();
   await rm(modHome, { recursive: true, force: true });
   await rm(newLayoutPath, { force: true });
   console.log(`Removed ${modHome} and ${newLayoutPath}`);

@@ -164,6 +164,28 @@ test("--uninstall removes the mod and the generated layout only", async () => {
   }
 });
 
+test("--upgrade and --uninstall leave another mod named quota alone", async () => {
+  const appHome = await mkdtemp(join(tmpdir(), "herdr-install-foreign-test-"));
+  const foreign = join(appHome, "mods", "quota", "main.js");
+  const layoutPath = join(appHome, "layouts", "quota-main.json");
+  await mkdir(dirname(foreign), { recursive: true });
+  await mkdir(dirname(layoutPath));
+  await writeFile(foreign, "someone else's mod");
+  await writeFile(layoutPath, "someone else's layout");
+  try {
+    for (const flag of ["--upgrade", "--uninstall"]) {
+      const result = install(appHome, flag);
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, /is not the quota mod this installer manages/);
+      assert.deepEqual(await readdir(dirname(foreign)), ["main.js"]);
+      assert.equal(await readFile(foreign, "utf8"), "someone else's mod");
+      assert.equal(await readFile(layoutPath, "utf8"), "someone else's layout");
+    }
+  } finally {
+    await rm(appHome, { recursive: true, force: true });
+  }
+});
+
 test("installer leaves nothing behind when the main layout has no Agents block", async () => {
   const appHome = await mkdtemp(join(tmpdir(), "herdr-install-layout-test-"));
   const mainPath = join(appHome, "layouts", "main.json");
