@@ -16,6 +16,16 @@ The panel starts compact: each provider shows its current short-term window and 
 - Claude Code and/or Codex CLI installed and signed in locally for the providers you want to see
 - GitHub CLI (`gh`) installed and signed in with `gh auth login` to try experimental Copilot usage
 
+### With a coding agent
+
+Herdr mods are usually added by asking a coding agent on the same machine. Give it this:
+
+```text
+Read ~/.config/herdr-app/AGENTS.md, then add this mod: https://github.com/dstanek/herdr-quota
+```
+
+The agent reads [RECIPE.md](RECIPE.md) and every file first, tells you what the mod runs and reaches, copies `mods/quota/` into your Herdr config, and places the panel beneath Agents in a layout you own.
+
 ### From a downloaded copy of this project
 
 Open a terminal in the project directory and run:
