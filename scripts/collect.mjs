@@ -4,6 +4,8 @@ import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { readClaudeCredentials } from "./claude-credentials.mjs";
 
+// The one place the version lives; sent to Claude and Codex to identify this client.
+const version = "0.1.0";
 const home = homedir();
 const errors = {};
 const absent = {};
@@ -74,7 +76,7 @@ async function claude() {
       headers: {
         authorization: `Bearer ${token}`,
         "anthropic-beta": "oauth-2025-04-20",
-        "user-agent": "herdr-quota/0.1",
+        "user-agent": `herdr-quota/${version}`,
         accept: "application/json",
       },
       signal: controller.signal,
@@ -166,7 +168,7 @@ async function codexRpc() {
   const sendNotification = (method, params = {}) => child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", method, params })}\n`);
   try {
     const initialized = await request(1, "initialize", {
-      clientInfo: { name: "herdr-quota", version: "0.1.0" },
+      clientInfo: { name: "herdr-quota", version },
       capabilities: {},
     });
     if (initialized.error) throw new Error(String(initialized.error.message || "Codex initialization failed"));
