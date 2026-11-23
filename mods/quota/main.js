@@ -109,7 +109,7 @@ export default class Quota extends View {
             .child(div().text_size(11).text_color(t.muted).child(window.label))
           .child(div().text_size(11).font_semibold().text_color(color).child(`${Math.round(remaining)}% left`)))
           .child(div().h(4).w_full().rounded(2).bg(t.border)
-            .child(div().h_full().rounded(2).bg(color).w(`${used}%`)))
+            .child(div().h_full().rounded(2).bg(color).w(`${remaining}%`)))
           .child(div().text_size(10).text_color(t.dim).child(resetLabel(window.resetsAt)));
       })))
       .when(Boolean(error) && windows.length > 0, (el) => el.child(div().pl(14).text_size(9.5)
