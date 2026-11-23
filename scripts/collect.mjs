@@ -44,19 +44,20 @@ function retryAfterMs(response) {
       : Date.now() + 10 * 60 * 1000;
 }
 
-async function claude() {
-  const configDir = process.env.CLAUDE_CONFIG_DIR || join(home, ".claude");
-  const creds = await readClaudeCredentials({
-    configDir,
+// Read once per run: on macOS every read spawns a Keychain lookup.
+let claudeSignIn;
+function claudeCredentials() {
+  claudeSignIn ??= readClaudeCredentials({
+    configDir: process.env.CLAUDE_CONFIG_DIR || join(home, ".claude"),
     securityCommand: process.env.CLAUDE_SECURITY_COMMAND || "security",
   });
-  const oauth = creds?.claudeAiOauth;
-  const token = oauth?.accessToken;
+  return claudeSignIn;
+}
+
+// collectProvider has already turned away an expired sign-in.
+async function claude() {
+  const token = (await claudeCredentials())?.claudeAiOauth?.accessToken;
   if (!token) throw new Error("No Claude Code sign-in found");
-  const expiresMs = dateMs(oauth.expiresAt);
-  if (Number.isFinite(expiresMs) && expiresMs <= Date.now()) {
-    throw new Error("Claude sign-in expired; run claude to refresh it");
-  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
@@ -315,11 +316,7 @@ async function collectProvider(id, load) {
   const cooldownUntil = cache.retryAfter[id] || 0;
 
   if (id === "claude") {
-    const configDir = process.env.CLAUDE_CONFIG_DIR || join(home, ".claude");
-    const credentials = await readClaudeCredentials({
-      configDir,
-      securityCommand: process.env.CLAUDE_SECURITY_COMMAND || "security",
-    });
+    const credentials = await claudeCredentials();
     const expiresAt = credentials?.claudeAiOauth?.expiresAt;
     const expiresMs = dateMs(expiresAt);
     if (Number.isFinite(expiresMs) && expiresMs <= now) {

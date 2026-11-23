@@ -188,6 +188,31 @@ test("collector starts Codex with a fixed app-server argv", async () => {
   }
 });
 
+test("Claude credentials are read from Keychain once per run", { skip: process.platform !== "darwin" }, async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-claude-keychain-test-"));
+  const keychain = join(directory, "security");
+  const callsPath = join(directory, "calls");
+  const preloadPath = join(directory, "mock-fetch.mjs");
+  const credentials = { claudeAiOauth: { accessToken: "keychain-token", expiresAt: Date.now() + 60 * 60_000 } };
+  await writeFile(keychain, `#!/bin/sh\nprintf x >> '${callsPath}'\nprintf '%s' '${JSON.stringify(credentials)}'\n`);
+  await chmod(keychain, 0o755);
+  await writeFile(preloadPath, `
+    globalThis.fetch = async () => new Response(JSON.stringify({ limits: [{ kind: "session", percent: 5 }] }));
+  `);
+  try {
+    const result = spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: isolatedEnv(directory, { CLAUDE_SECURITY_COMMAND: keychain }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).providers.claude.windows[0].label, "5h");
+    assert.equal(await readFile(callsPath, "utf8"), "x");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("a Claude 429 starts a cooldown that skips the next request", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-claude-429-test-"));
   const cachePath = join(directory, "cache.json");
