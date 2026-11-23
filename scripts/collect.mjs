@@ -292,7 +292,8 @@ async function persistCache() {
 
 function visibleWindows(snapshot) {
   const now = Date.now();
-  return (snapshot?.windows || []).filter((window) => !window.resetsAt || window.resetsAt > now);
+  const windows = Array.isArray(snapshot?.windows) ? snapshot.windows : [];
+  return windows.filter((window) => window && (!window.resetsAt || window.resetsAt > now));
 }
 
 async function collectProvider(id, load) {
