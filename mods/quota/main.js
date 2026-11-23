@@ -41,6 +41,14 @@ function staleLabel(timestamp) {
   return `Stale, ${age} old`;
 }
 
+// Where the bar would end if the window had been used at an even pace since it opened.
+function paceMark(window) {
+  const length = window.resetsAt - window.startsAt;
+  if (!(length > 0)) return null;
+  const elapsed = (Date.now() - window.startsAt) / length;
+  return Math.max(0, Math.min(100, (1 - elapsed) * 100));
+}
+
 function currentWindow(windows) {
   return windows.find((window) => /^(5h|5-hour|session)$/i.test(window.label))
     || windows[0];
@@ -135,12 +143,14 @@ export default class Quota extends View {
       .when(open, (el) => el.children(windows.map((window) => {
         const used = Math.max(0, Math.min(100, Number(window.usedPercent) || 0));
         const remaining = 100 - used;
+        const pace = paceMark(window);
         return v_flex().gap(4)
           .child(h_flex().items_center().justify_between()
             .child(div().text_size(11).text_color(t.muted).child(window.label))
           .child(div().text_size(11).font_semibold().text_color(colorFor(t, used, t.foreground)).child(`${Math.round(remaining)}% left`)))
-          .child(div().h(4).w_full().rounded(2).bg(t.border)
-            .child(div().h_full().rounded(2).bg(colorFor(t, used, t.muted)).w(`${remaining}%`)))
+          .child(div().relative().h(4).w_full().rounded(2).bg(t.border)
+            .child(div().h_full().rounded(2).bg(colorFor(t, used, t.muted)).w(`${remaining}%`))
+            .when(pace !== null, (el) => el.child(div().absolute().top(-2).left(`${pace}%`).ml(-1).w(2).h(8).bg(t.foreground))))
           .child(div().text_size(10).text_color(t.dim).child(resetLabel(window.resetsAt)));
       })))
       .when(Boolean(note) && windows.length > 0, (el) => el.child(div().text_size(9.5)
