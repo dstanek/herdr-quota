@@ -30,8 +30,7 @@ function resetLabel(value) {
 function colorFor(t, window, healthy) {
   const used = Number(window.usedPercent) || 0;
   if (used >= 85) return t.blocked;
-  const pace = paceMark(window);
-  if (used >= 60 || (pace !== null && used - pace >= 10)) return t.working;
+  if (used >= 60 || aheadOfPace(window)) return t.working;
   return healthy;
 }
 
@@ -50,9 +49,17 @@ function paceMark(window) {
   return Math.max(0, Math.min(100, (Date.now() - window.startsAt) / length * 100));
 }
 
-// The window closest to running out, which is the one that will block first.
-function tightestWindow(windows) {
-  return windows.reduce((tightest, window) => (!tightest || window.usedPercent > tightest.usedPercent ? window : tightest), null);
+// Using quota 10 or more points faster than an even pace through the window.
+function aheadOfPace(window) {
+  const pace = paceMark(window);
+  return pace !== null && (Number(window.usedPercent) || 0) - pace >= 10;
+}
+
+// The window that most needs attention: one nearly used up, then one ahead of pace, then the most used.
+function urgentWindow(windows) {
+  const rank = (window) => (window.usedPercent >= 85 ? 2 : aheadOfPace(window) ? 1 : 0);
+  return windows.reduce((urgent, window) => (!urgent || rank(window) > rank(urgent)
+    || (rank(window) === rank(urgent) && window.usedPercent > urgent.usedPercent) ? window : urgent), null);
 }
 
 // The layout block showing this mod, when a column gives it a fixed height.
@@ -125,7 +132,7 @@ export default class Quota extends View {
     const absent = !windows.length && Boolean(this.absent[provider.id]);
     // An idle Claude Code is not a failure, so its note stays dim.
     const quiet = absent || Boolean(this.paused[provider.id]);
-    const current = tightestWindow(windows);
+    const current = urgentWindow(windows);
     const currentUsed = current ? Math.round(current.usedPercent) : null;
     const open = Boolean(this.expanded[provider.id]);
     const plan = typeof data?.plan === "string" ? data.plan.charAt(0).toUpperCase() + data.plan.slice(1) : "";

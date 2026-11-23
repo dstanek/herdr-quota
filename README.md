@@ -2,7 +2,7 @@
 
 A native Herdr **desktop** sidebar panel for checking remaining subscription usage for Claude Code, ChatGPT, and (experimentally) GitHub Copilot.
 
-The panel starts compact: each provider shows the window closest to running out and the percentage used in it. Click a provider to expand its other quota windows, percentages, and reset times.
+The panel starts compact: each provider shows the window that most needs attention and the percentage used in it: one that is nearly used up, otherwise one running ahead of an even pace, otherwise the most used. Click a provider to expand its other quota windows, percentages, and reset times.
 
 <img src="preview.png" alt="The Quota panel with Claude expanded, ChatGPT collapsed, and Copilot not signed in (sample data)" width="270">
 
