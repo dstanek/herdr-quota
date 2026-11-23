@@ -204,7 +204,7 @@ export default class Quota extends View {
       mod: "quota",
       kind: "popup",
       width: 230,
-      height: 10 + 28 + offered.length * 30 + 34 + PARTS.length * 30 + 34 + INTERVALS.length * 30 + 34 + CLOCKS.length * 30,
+      height: 10 + 28 + offered.length * 30 + 34 + PARTS.length * 30 + 34 + 30 + 34 + 30,
       props: {
         menu: true,
         start: props() ?? {},
@@ -225,6 +225,16 @@ export default class Quota extends View {
       .when(Boolean(note), (el) => el.child(div().flex_none().text_size(10).text_color(t.dim).child(note)))
       .child(div().size(14).flex_none()
         .when(on, (el) => el.child(svg("mods/workspace-chrome/check.svg").size(14).text_color(t.accent))));
+    // Where only one choice can hold, the choices sit side by side and the chosen one is filled.
+    const pick = (id, choices, chosen, act) => h_flex().h(30).px(8).items_center()
+      .child(h_flex().w_full().h(24).p(2).gap(2).rounded(6).border(1).border_color(t.border)
+        .children(choices.map(([value, label]) => h_flex().id(`${id}-${value}`).flex_1().h_full().rounded(4)
+          .items_center().justify_center().cursor_pointer().text_size(11.5)
+          .text_color(value === chosen ? t.foreground : t.muted)
+          .when(value === chosen, (el) => el.bg(t.hover))
+          .when(value !== chosen, (el) => el.hover((el) => el.text_color(t.foreground)))
+          .on_click(() => act(value))
+          .child(label))));
     return v_flex().id("quota-settings-menu").w_full().p(5).bg(t.popover).text_size(12.5)
       .child(div().px(8).pt(6).pb(4).text_size(10.5).text_color(t.dim).child("Providers to check"))
       .children(offeredProviders().map((provider) => {
@@ -240,11 +250,9 @@ export default class Quota extends View {
         return row(`quota-show-${part}`, label, on, () => save({ hide: on ? [...hide, part] : hide.filter((other) => other !== part) }));
       }))
       .child(div().px(8).pt(12).pb(4).text_size(10.5).text_color(t.dim).child("Refresh every"))
-      .children(INTERVALS.map((minutes) => row(`quota-interval-${minutes}`, `${minutes} minutes`, minutes === interval(),
-        () => save({ minutes }))))
+      .child(pick("quota-interval", INTERVALS.map((minutes) => [minutes, `${minutes} min`]), interval(), (minutes) => save({ minutes })))
       .child(div().px(8).pt(12).pb(4).text_size(10.5).text_color(t.dim).child("Clock"))
-      .children(CLOCKS.map(([hours, label]) => row(`quota-clock-${hours}`, label, hours === clock(),
-        () => save({ clock: hours }))));
+      .child(pick("quota-clock", CLOCKS, clock(), (hours) => save({ clock: hours })));
   }
 
   // Never signed in, and no earlier reading to show: these get no row.
