@@ -180,7 +180,8 @@ async function codex() {
       const item = limit?.[field];
       if (typeof item?.usedPercent !== "number") continue;
       const mins = item.windowDurationMins;
-      const span = mins % 1440 === 0 ? `${mins / 1440}d` : mins % 60 === 0 ? `${mins / 60}h` : `${mins}m`;
+      const span = !Number.isFinite(mins) ? field
+        : mins % 1440 === 0 ? `${mins / 1440}d` : mins % 60 === 0 ? `${mins / 60}h` : `${mins}m`;
       windows.push(normalizeWindow(`${span}${name ? ` ${name}` : ""}`, item.usedPercent, item.resetsAt));
     }
   };

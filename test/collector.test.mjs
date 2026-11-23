@@ -204,6 +204,37 @@ test("malformed cached windows are ignored", async () => {
   }
 });
 
+test("Codex windows are labelled by duration, or by slot when no duration is reported", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-codex-label-test-"));
+  const codexPath = join(directory, "codex");
+  await writeFile(codexPath, `#!/bin/sh
+read line; echo '{"id":1,"result":{}}'
+read line; read line; echo '{"id":2,"result":{"account":{"type":"chatgpt"}}}'
+read line; echo '{"id":3,"result":{"rateLimits":{"primary":{"usedPercent":5,"windowDurationMins":300},"secondary":{"usedPercent":40}}}}'
+sleep 1
+`);
+  await chmod(codexPath, 0o755);
+  try {
+    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        HERDR_USAGE_CACHE: join(directory, "cache.json"),
+        CLAUDE_CONFIG_DIR: join(directory, "claude"),
+        CLAUDE_SECURITY_COMMAND: join(directory, "missing-security"),
+        CODEX_BIN_PATH: codexPath,
+        GH_BIN_PATH: join(directory, "missing-gh"),
+      },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    const snapshot = JSON.parse(result.stdout);
+    assert.deepEqual(snapshot.providers.chatgpt.windows.map((window) => window.label), ["5h", "secondary"]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("Copilot parses finite quota snapshots using gh auth without caching credentials", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-test-"));
   const cachePath = join(directory, "cache.json");
