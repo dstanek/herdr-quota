@@ -169,9 +169,23 @@ test("Claude parses session, weekly, and per-model windows from either response 
   }
 });
 
-test("collector uses a fixed Codex app-server argv", async () => {
-  const source = await readFile(new URL("../scripts/collect.mjs", import.meta.url), "utf8");
-  assert.match(source, /"app-server", "--stdio"/);
+test("collector starts Codex with a fixed app-server argv", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-codex-argv-test-"));
+  const codexPath = join(directory, "codex");
+  const argvPath = join(directory, "argv");
+  await writeFile(codexPath, `#!/bin/sh\nprintf '%s\\n' "$@" > '${argvPath}'\n`);
+  await chmod(codexPath, 0o755);
+  try {
+    const result = spawnSync(process.execPath, ["scripts/collect.mjs"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: isolatedEnv(directory, { CODEX_BIN_PATH: codexPath }),
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(await readFile(argvPath, "utf8"), "app-server\n--stdio\n");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("missing CLIs are reported against their own provider", async () => {
