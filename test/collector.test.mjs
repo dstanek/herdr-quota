@@ -125,7 +125,7 @@ test("Claude parses session, weekly, and per-model windows from either response 
   const preloadPath = join(directory, "mock-fetch.mjs");
   await mkdir(configDir);
   await writeFile(join(configDir, ".credentials.json"), JSON.stringify({
-    claudeAiOauth: { accessToken: "test-claude-token", expiresAt: Date.now() + 60 * 60_000 },
+    claudeAiOauth: { accessToken: "test-claude-token", expiresAt: Date.now() + 60 * 60_000, subscriptionType: "max" },
   }));
   const bodies = {
     limits: { limits: [
@@ -158,6 +158,7 @@ test("Claude parses session, weekly, and per-model windows from either response 
       });
       assert.equal(result.status, 0, result.stderr);
       assert.doesNotMatch(result.stdout, /test-claude-token|Bearer/);
+      assert.equal(JSON.parse(result.stdout).providers.claude.plan, "max");
       windows[shape] = JSON.parse(result.stdout).providers.claude.windows;
     }
     assert.deepEqual(windows.limits, [
@@ -460,7 +461,7 @@ test("Copilot parses finite quota snapshots using gh auth without caching creden
   await writeFile(preloadPath, `
     globalThis.fetch = async (_url, options) => {
       if (options.headers.authorization !== "token test-copilot-token") throw new Error("missing auth");
-      return new Response(JSON.stringify({ quota_reset_date_utc: "2030-01-01T00:00:00.000Z", quota_snapshots: {
+      return new Response(JSON.stringify({ copilot_plan: "individual", quota_reset_date_utc: "2030-01-01T00:00:00.000Z", quota_snapshots: {
         premium_interactions: { percent_remaining: 75, quota_reset_at: 0 },
         chat: { remaining: 2, entitlement: 8, quota_reset_at: 1900000000 },
         future_bucket: { remaining: 1, entitlement: 4 },
@@ -482,6 +483,7 @@ test("Copilot parses finite quota snapshots using gh auth without caching creden
     });
     assert.equal(result.status, 0, result.stderr);
     const snapshot = JSON.parse(result.stdout);
+    assert.equal(snapshot.providers.copilot.plan, "individual");
     assert.deepEqual(snapshot.providers.copilot.windows.map(({ label, usedPercent, resetsAt }) =>
       ({ label, usedPercent, resetsAt })), [
       { label: "Premium", usedPercent: 25, resetsAt: Date.parse("2030-01-01T00:00:00Z") },

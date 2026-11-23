@@ -66,7 +66,8 @@ function claudeCredentials() {
 
 // collectProvider has already turned away an expired sign-in.
 async function claude() {
-  const token = (await claudeCredentials())?.claudeAiOauth?.accessToken;
+  const oauth = (await claudeCredentials())?.claudeAiOauth;
+  const token = oauth?.accessToken;
   if (!token) throw absentError("No Claude Code sign-in found");
 
   const controller = new AbortController();
@@ -106,7 +107,7 @@ async function claude() {
       }
     }
     if (!windows.length) throw new Error("No quota windows returned");
-    return { windows };
+    return { plan: typeof oauth.subscriptionType === "string" ? oauth.subscriptionType : null, windows };
   } catch (error) {
     if (error.name === "AbortError") throw new Error("Usage request timed out");
     throw error;
@@ -299,7 +300,7 @@ async function copilot() {
       if (window) windows.push(window);
     }
     if (!windows.length) throw new Error("No finite Copilot quota windows returned");
-    return { windows };
+    return { plan: typeof body.copilot_plan === "string" ? body.copilot_plan : null, windows };
   } catch (error) {
     if (error.name === "AbortError") throw new Error("Copilot usage request timed out");
     throw error;
