@@ -404,4 +404,5 @@ try {
 } catch {
   // Current readings remain usable if the cache directory is unavailable.
 }
-process.stdout.write(JSON.stringify({ providers, errors, absent, paused }));
+// Exit once the output is out: a timed-out program that ignores its kill would keep this process alive.
+process.stdout.write(JSON.stringify({ providers, errors, absent, paused }), () => process.exit());

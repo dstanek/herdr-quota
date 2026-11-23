@@ -17,7 +17,11 @@ function readKeychain(command) {
       windowsHide: true,
     });
     let output = "";
-    const timeout = setTimeout(() => child.kill(), 3000);
+    // Rejects without waiting for the close, which a stuck program may never give.
+    const timeout = setTimeout(() => {
+      child.kill();
+      reject(new Error("Claude Keychain read timed out"));
+    }, 3000);
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk) => {
       output += chunk;

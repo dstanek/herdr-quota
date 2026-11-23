@@ -601,3 +601,24 @@ test("Copilot times out a hung gh with a safe error", async () => {
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test("a timed-out gh that ignores its kill does not hold the collector open", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-stuck-test-"));
+  const ghPath = join(directory, "gh");
+  await writeFile(ghPath, "#!/bin/sh\ntrap '' TERM\nsleep 5\n");
+  await chmod(ghPath, 0o755);
+  try {
+    const started = Date.now();
+    const result = spawnSync(process.execPath, ["mods/quota/collect.mjs"], {
+      cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+      encoding: "utf8",
+      env: isolatedEnv(directory, { GH_BIN_PATH: ghPath, GH_TIMEOUT_MS: "300" }),
+      timeout: 10000,
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(JSON.parse(result.stdout).errors.copilot, "GitHub CLI request timed out");
+    assert.ok(Date.now() - started < 3000, "the collector waited for the stuck gh");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
