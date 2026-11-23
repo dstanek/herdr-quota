@@ -49,6 +49,8 @@ export default class Quota extends View {
     this.updatedAt = null;
     this.refresh(cx);
     cx.timer.every(300000, (cx) => this.refresh(cx));
+    // Countdowns and ages move on between refreshes.
+    cx.timer.every(60000, (cx) => cx.notify());
   }
 
   refresh(cx) {
