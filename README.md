@@ -31,6 +31,25 @@ The installer copies the mod and its collector to Herdr's mods folder and create
 
 The default Herdr config directory is `~/.config/herdr-app`. If Herdr uses a custom directory, set `HERDR_APP_HOME` to that directory when running the installer.
 
+### Upgrade
+
+The installer will not overwrite an existing install. To update one, copy the new files over it from the project directory; Herdr reloads the mod when they change, and your layout is left as it is:
+
+```sh
+cp mods/quota/main.js scripts/collect.mjs scripts/claude-credentials.mjs ~/.config/herdr-app/mods/quota/
+```
+
+### Uninstall
+
+Switch back to your original layout, then delete the mod and the generated layout. Deleting the cache file is optional.
+
+```sh
+herdr-app do layout.switch '{"name":"main"}'
+rm -r ~/.config/herdr-app/mods/quota
+rm ~/.config/herdr-app/layouts/quota-main.json
+rm ~/.cache/herdr-usage.json
+```
+
 ### Provider setup
 
 - **Claude:** use your existing Claude Code sign-in. On macOS, the mod reads the `Claude Code-credentials` item from Keychain first, then falls back to `~/.claude/.credentials.json`. Approve Keychain access if macOS prompts. On other platforms it reads the credentials file.
