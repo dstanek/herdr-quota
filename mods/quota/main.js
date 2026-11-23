@@ -119,7 +119,8 @@ export default class Quota extends View {
   fit(height) {
     if (checking()) return;
     const block = fixedBlock(layout());
-    const px = Math.ceil(41 + height + 10);
+    // The panel's top border, its header, the rows and the padding beneath them.
+    const px = Math.ceil(1 + 41 + height + 10);
     if (block && block.size.px !== px) run("layout.resize", { id: block.id, px });
   }
 
