@@ -116,3 +116,7 @@ herdr-app check mods/quota
 `herdr-app check` also writes `mods/quota/gpui-kit.d.ts`, the editor types for the Herdr version you have installed. That file is generated and ignored by version control.
 
 The tests never touch your real sign-ins: each one points the collector at stand-in CLIs, credentials, and responses in a temporary directory.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
