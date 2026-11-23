@@ -76,9 +76,11 @@ function paceMark(window) {
 }
 
 // Using quota 10 or more points faster than an even pace through the window.
+// Not below 20% used: just after a reset almost any use is ahead of pace, and none of it is a worry.
 function aheadOfPace(window) {
   const pace = paceMark(window);
-  return pace !== null && (Number(window.usedPercent) || 0) - pace >= 10;
+  const used = Number(window.usedPercent) || 0;
+  return pace !== null && used >= 20 && used - pace >= 10;
 }
 
 // The window that most needs attention: one nearly used up, then one ahead of pace, then the most used.
