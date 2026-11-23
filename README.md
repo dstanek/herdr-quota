@@ -74,9 +74,9 @@ The panel itself has no settings. The collector reads a few environment variable
 | `HERDR_USAGE_CACHE` | Cache file location | `~/.cache/herdr-usage.json` |
 | `CLAUDE_SECURITY_COMMAND` | macOS Keychain command; exists for the tests | `security` |
 
-The panel always lists all three providers and reads each one's existing local sign-in, so there is no provider setup file to maintain. A provider you have never signed in to stays in the list, dimmed and marked "Not signed in"; it cannot be hidden. The available choices (which providers to enable, refresh interval, or compact/expanded defaults) do not yet justify configuration: adding toggles would make the initial setup more involved without improving the default experience.
+The panel always lists all three providers and reads each one's existing local sign-in, so there is no provider setup file to maintain. A provider you have never signed in to stays in the list, dimmed and marked "Not signed in"; it cannot be hidden. The five-minute refresh interval is fixed, and providers always start collapsed.
 
-The implementation supports Claude Code and Codex/ChatGPT, plus experimental best-effort GitHub Copilot usage through an undocumented endpoint. More providers can be added when their local auth and quota interfaces can be read reliably. This is a Herdr desktop mod; the separate Herdr mobile app does not currently run desktop mods.
+This is a Herdr desktop mod; the separate Herdr mobile app does not currently run desktop mods.
 
 ## Development checks
 
