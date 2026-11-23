@@ -33,6 +33,17 @@ function normalizeWindow(label, usedPercent, resetsAt) {
   return { label, usedPercent: Math.max(0, Math.min(100, usedPercent)), resetsAt: dateMs(resetsAt) };
 }
 
+function retryAfterMs(response) {
+  const header = response.headers.get("retry-after");
+  const seconds = Number(header);
+  const retryDate = Date.parse(header);
+  return Number.isFinite(seconds) && seconds > 0
+    ? Date.now() + seconds * 1000
+    : Number.isFinite(retryDate) && retryDate > Date.now()
+      ? retryDate
+      : Date.now() + 10 * 60 * 1000;
+}
+
 async function claude() {
   const configDir = process.env.CLAUDE_CONFIG_DIR || join(home, ".claude");
   const creds = await readClaudeCredentials({
@@ -64,16 +75,7 @@ async function claude() {
         : response.status === 429 ? "Usage endpoint is rate limited"
           : `Usage endpoint returned ${response.status}`;
       const error = new Error(reason);
-      if (response.status === 429) {
-        const header = response.headers.get("retry-after");
-        const seconds = Number(header);
-        const retryDate = Date.parse(header);
-        error.retryAfter = Number.isFinite(seconds) && seconds > 0
-          ? Date.now() + seconds * 1000
-          : Number.isFinite(retryDate) && retryDate > Date.now()
-            ? retryDate
-            : Date.now() + 10 * 60 * 1000;
-      }
+      if (response.status === 429) error.retryAfter = retryAfterMs(response);
       throw error;
     }
     const body = await response.json();
@@ -253,7 +255,14 @@ async function copilot() {
       },
       signal: controller.signal,
     });
-    if (!response.ok) throw new Error(`Copilot usage endpoint returned ${response.status}`);
+    if (!response.ok) {
+      // GitHub signals rate limits with 429, or 403 carrying retry-after.
+      const limited = response.status === 429 || (response.status === 403 && response.headers.has("retry-after"));
+      const error = new Error(limited ? "Copilot usage endpoint is rate limited"
+        : `Copilot usage endpoint returned ${response.status}`);
+      if (limited) error.retryAfter = retryAfterMs(response);
+      throw error;
+    }
     const body = await response.json();
     const snapshots = body?.quota_snapshots;
     if (!snapshots || typeof snapshots !== "object" || Array.isArray(snapshots)) {

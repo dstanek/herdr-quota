@@ -76,14 +76,14 @@ Claude usage is equally unofficial. The collector sends your Claude Code OAuth t
 - The panel grows and shrinks to fit its rows when it sits in a fixed-height sidebar block, as the installer places it.
 - Automatic refresh every five minutes, plus manual refresh from the panel header.
 
-If Claude rate-limits requests, the collector backs off for the interval Claude asks for (ten minutes if it gives none). ChatGPT and Copilot have no backoff; a failed request is simply retried on the next refresh. In every case the last successful reading stays visible with its age. The cache is stored at `~/.cache/herdr-usage.json` (or under `XDG_CACHE_HOME`) and contains quota percentages, reset times, plan names, and fetch timestamps—not credentials.
+If Claude or Copilot rate-limits requests, the collector backs off for the interval the provider asks for (ten minutes if it gives none). ChatGPT has no backoff; a failed request is simply retried on the next refresh. In every case the last successful reading stays visible with its age. The cache is stored at `~/.cache/herdr-usage.json` (or under `XDG_CACHE_HOME`) and contains quota percentages, reset times, plan names, and fetch timestamps—not credentials.
 
 ## Troubleshooting
 
 - **No Claude data:** check that Claude Code is signed in. On macOS, approve the Keychain prompt if shown. If Claude reports a sign-in problem, open Claude Code and check its own auth status before retrying.
 - **No ChatGPT data:** verify Codex CLI is installed and signed in with a ChatGPT account, not API-key auth.
 - **No Copilot data:** verify `gh auth status` succeeds and that the GitHub account has Copilot access. The undocumented endpoint may also fail or change independently of this mod.
-- **Rate limited (Claude):** the last successful reading remains visible if available. Wait for the displayed retry interval; avoid repeatedly pressing refresh.
+- **Rate limited (Claude, Copilot):** the last successful reading remains visible if available. Wait for the displayed retry interval; avoid repeatedly pressing refresh.
 - **Switch back to your original layout:** `herdr-app do layout.switch '{"name":"main"}'`.
 - **Validate the installed mod:** `herdr-app check ~/.config/herdr-app/mods/quota`.
 

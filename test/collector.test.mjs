@@ -421,6 +421,38 @@ test("Copilot parses finite quota snapshots using gh auth without caching creden
   }
 });
 
+test("a Copilot rate limit starts a cooldown that skips the next request", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-limit-test-"));
+  const ghPath = join(directory, "gh");
+  const preloadPath = join(directory, "mock-fetch.mjs");
+  const callsPath = join(directory, "calls");
+  await writeFile(ghPath, "#!/bin/sh\nprintf '%s' 'test-copilot-token'\n");
+  await chmod(ghPath, 0o755);
+  await writeFile(preloadPath, `
+    import { appendFileSync } from "node:fs";
+    globalThis.fetch = async () => {
+      appendFileSync(${JSON.stringify(callsPath)}, "x");
+      return new Response("", { status: 403, headers: { "retry-after": "180" } });
+    };
+  `);
+  const run = () => spawnSync(process.execPath, ["--import", preloadPath, "scripts/collect.mjs"], {
+    cwd: dirname(dirname(fileURLToPath(import.meta.url))),
+    encoding: "utf8",
+    env: isolatedEnv(directory, { GH_BIN_PATH: ghPath }),
+  });
+  try {
+    const first = run();
+    assert.equal(first.status, 0, first.stderr);
+    assert.equal(JSON.parse(first.stdout).errors.copilot, "Copilot usage endpoint is rate limited");
+    const second = run();
+    assert.equal(second.status, 0, second.stderr);
+    assert.equal(JSON.parse(second.stdout).errors.copilot, "Rate limited; retry in 3m");
+    assert.equal(await readFile(callsPath, "utf8"), "x");
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("Copilot rejects oversized gh token output without exposing it", async () => {
   const directory = await mkdtemp(join(tmpdir(), "herdr-copilot-output-test-"));
   const cachePath = join(directory, "cache.json");
